@@ -604,9 +604,6 @@ function onDataChange() {
     toggleBtn.classList.toggle('corrected', viewMode === 'corrected');
 
     gdReset();
-    redrawLeft();
-    redrawMid();
-    updateRight();
 }
 
 /* ═══════════════════════════════
@@ -614,17 +611,17 @@ function onDataChange() {
 ═══════════════════════════════ */
 document.getElementById('a0Input').addEventListener('input', e => {
     const v = parseFloat(e.target.value);
-    if (!isNaN(v)) { gdA0 = v; gdReset(); redrawLeft(); redrawMid(); updateRight(); }
+    if (!isNaN(v)) { gdA0 = v; gdReset(); }
 });
 document.getElementById('alphaSlider').addEventListener('input', e => {
     gdAlpha = +e.target.value;
     document.getElementById('alphaDisplay').textContent = gdAlpha.toFixed(2);
-    gdReset(); redrawLeft(); redrawMid(); updateRight();
+    gdReset();
 });
 document.getElementById('nSlider').addEventListener('input', e => {
     gdN = +e.target.value;
     document.getElementById('nDisplay').textContent = gdN;
-    gdReset(); redrawLeft(); redrawMid(); updateRight();
+    gdReset();
 });
 document.getElementById('stepSlider').addEventListener('input', e => {
     gdStop(); updateGdControls(); gdGoToStep(+e.target.value);
