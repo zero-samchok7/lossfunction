@@ -63,13 +63,134 @@ function fmtN(n, d) {
     return n.toFixed(d !== undefined ? d : 3);
 }
 
-/* ─ placeholders (구현은 Task 3~5에서) ─ */
-function redrawLeft() {}
+/* ─ placeholders (구현은 Task 4~5에서) ─ */
 function redrawMid() {}
 function updateRight() {}
 function gdReset() {}
-function resizeLeft() {}
 function resizeMid() {}
+
+/* ═══════════════════════════════
+   LEFT CANVAS
+═══════════════════════════════ */
+const leftCvs = document.getElementById('leftCvs');
+const leftCtx = leftCvs.getContext('2d');
+const LPAD = {top: 18, right: 10, bottom: 36, left: 44};
+let LW = 0, LH = 0;
+let leftVP = {xMin: -5, xMax: 5, yMin: -5, yMax: 5, tx: 2, ty: 2};
+
+function resizeLeft() {
+    const wrap = document.getElementById('leftCanvasWrap');
+    LW = leftCvs.width  = wrap.clientWidth;
+    LH = leftCvs.height = wrap.clientHeight;
+    redrawLeft();
+}
+
+function calcVP(pts) {
+    if (pts.length < 2) return {xMin: -5, xMax: 5, yMin: -5, yMax: 5, tx: 2, ty: 2};
+    let xl = Math.min(...pts.map(p => p.x)), xh = Math.max(...pts.map(p => p.x));
+    let yl = Math.min(...pts.map(p => p.y)), yh = Math.max(...pts.map(p => p.y));
+    const xs = xh - xl || Math.abs(xh) || 1;
+    const ys = yh - yl || Math.abs(yh) || 1;
+    xl -= xs * 0.3; xh += xs * 0.3; yl -= ys * 0.3; yh += ys * 0.3;
+    const tx = niceStep((xh - xl) / 5), ty = niceStep((yh - yl) / 4);
+    return {
+        xMin: Math.floor(xl / tx) * tx, xMax: Math.ceil(xh / tx) * tx,
+        yMin: Math.floor(yl / ty) * ty, yMax: Math.ceil(yh / ty) * ty, tx, ty
+    };
+}
+
+function lPW() { return LW - LPAD.left - LPAD.right; }
+function lPH() { return LH - LPAD.top  - LPAD.bottom; }
+function lCX(x) { return LPAD.left + (x - leftVP.xMin) / (leftVP.xMax - leftVP.xMin) * lPW(); }
+function lCY(y) { return LPAD.top  + (1 - (y - leftVP.yMin) / (leftVP.yMax - leftVP.yMin)) * lPH(); }
+
+function redrawLeft() {
+    if (!LW || !LH) return;
+    const pts = viewMode === 'corrected' ? corrPts : dataPts;
+    leftVP = calcVP(pts.length >= 2 ? pts : [{x: -5, y: -5}, {x: 5, y: 5}]);
+    leftCtx.clearRect(0, 0, LW, LH);
+
+    // Grid
+    leftCtx.save(); leftCtx.strokeStyle = '#edf2f7'; leftCtx.lineWidth = 1;
+    for (let x = Math.ceil(leftVP.xMin / leftVP.tx) * leftVP.tx; x <= leftVP.xMax + 1e-9; x += leftVP.tx) {
+        const cx = lCX(Math.round(x * 1e9) / 1e9);
+        leftCtx.beginPath(); leftCtx.moveTo(cx, LPAD.top); leftCtx.lineTo(cx, LH - LPAD.bottom); leftCtx.stroke();
+    }
+    for (let y = Math.ceil(leftVP.yMin / leftVP.ty) * leftVP.ty; y <= leftVP.yMax + 1e-9; y += leftVP.ty) {
+        const cy = lCY(Math.round(y * 1e9) / 1e9);
+        leftCtx.beginPath(); leftCtx.moveTo(LPAD.left, cy); leftCtx.lineTo(LW - LPAD.right, cy); leftCtx.stroke();
+    }
+    leftCtx.restore();
+
+    // Axes
+    leftCtx.save(); leftCtx.strokeStyle = '#cbd5e0'; leftCtx.lineWidth = 1.5;
+    const ay = (leftVP.yMin <= 0 && leftVP.yMax >= 0) ? lCY(0) : LH - LPAD.bottom;
+    const ax = (leftVP.xMin <= 0 && leftVP.xMax >= 0) ? lCX(0) : LPAD.left;
+    leftCtx.beginPath(); leftCtx.moveTo(LPAD.left, ay); leftCtx.lineTo(LW - LPAD.right, ay); leftCtx.stroke();
+    leftCtx.beginPath(); leftCtx.moveTo(ax, LPAD.top); leftCtx.lineTo(ax, LH - LPAD.bottom); leftCtx.stroke();
+    const fs = Math.max(9, LW * 0.03);
+    leftCtx.font = `${fs}px sans-serif`; leftCtx.fillStyle = '#a0aec0';
+    leftCtx.textAlign = 'center'; leftCtx.textBaseline = 'top';
+    for (let x = Math.ceil(leftVP.xMin / leftVP.tx) * leftVP.tx; x <= leftVP.xMax + 1e-9; x += leftVP.tx)
+        leftCtx.fillText(Math.round(x * 1e9) / 1e9, lCX(Math.round(x * 1e9) / 1e9), LH - LPAD.bottom + 3);
+    leftCtx.textAlign = 'right'; leftCtx.textBaseline = 'middle';
+    for (let y = Math.ceil(leftVP.yMin / leftVP.ty) * leftVP.ty; y <= leftVP.yMax + 1e-9; y += leftVP.ty)
+        leftCtx.fillText(Math.round(y * 1e9) / 1e9, LPAD.left - 3, lCY(Math.round(y * 1e9) / 1e9));
+    leftCtx.restore();
+
+    // Trend line
+    const curA = gdHistory.length > 0 ? gdHistory[gdCurrentStep].a : null;
+    if (curA !== null) {
+        leftCtx.save(); leftCtx.strokeStyle = '#c53030'; leftCtx.lineWidth = 2; leftCtx.setLineDash([]);
+        if (viewMode === 'corrected') {
+            leftCtx.beginPath();
+            leftCtx.moveTo(lCX(leftVP.xMin), lCY(curA * leftVP.xMin));
+            leftCtx.lineTo(lCX(leftVP.xMax), lCY(curA * leftVP.xMax));
+        } else {
+            leftCtx.beginPath();
+            leftCtx.moveTo(lCX(leftVP.xMin), lCY(curA * (leftVP.xMin - xbar) + ybar));
+            leftCtx.lineTo(lCX(leftVP.xMax), lCY(curA * (leftVP.xMax - xbar) + ybar));
+        }
+        leftCtx.stroke(); leftCtx.restore();
+    }
+
+    // Centroid marker (오렌지 십자)
+    if (dataPts.length >= 2) {
+        const cx = viewMode === 'corrected' ? 0 : xbar;
+        const cy = viewMode === 'corrected' ? 0 : ybar;
+        const px = lCX(cx), py = lCY(cy), sz = 7;
+        leftCtx.save(); leftCtx.strokeStyle = '#ed8936'; leftCtx.lineWidth = 1.8;
+        leftCtx.beginPath(); leftCtx.moveTo(px - sz, py); leftCtx.lineTo(px + sz, py); leftCtx.stroke();
+        leftCtx.beginPath(); leftCtx.moveTo(px, py - sz); leftCtx.lineTo(px, py + sz); leftCtx.stroke();
+        leftCtx.restore();
+    }
+
+    // Data points
+    const r = Math.max(4, LW * 0.014);
+    for (const p of pts) {
+        leftCtx.beginPath(); leftCtx.arc(lCX(p.x), lCY(p.y), r, 0, Math.PI * 2);
+        leftCtx.fillStyle = '#2d3748'; leftCtx.fill();
+        leftCtx.strokeStyle = '#fff'; leftCtx.lineWidth = 1.5; leftCtx.stroke();
+    }
+
+    // Equation + MSE label
+    const eqEl = document.getElementById('leftEq');
+    const mseEl = document.getElementById('leftMse');
+    if (curA === null || corrPts.length < 2) {
+        eqEl.className = 'eq-ph';
+        eqEl.textContent = dataPts.length >= 2 ? '보정 보기로 전환하세요' : '데이터를 입력하세요';
+        mseEl.textContent = '—';
+    } else {
+        eqEl.className = 'eq-blue';
+        if (viewMode === 'corrected') {
+            eqEl.textContent = `y = ${fmtN(curA, 3)}x`;
+        } else {
+            const b = ybar - curA * xbar;
+            eqEl.textContent = `y = ${fmtN(curA, 3)}x ${b >= 0 ? '+' : '−'} ${fmtN(Math.abs(b), 3)}`;
+        }
+        mseEl.textContent = fmtN(mse(curA, corrPts), 4);
+    }
+}
 
 /* ═══════════════════════════════
    TABLE
@@ -226,3 +347,4 @@ window.addEventListener('resize', () => { resizeLeft(); resizeMid(); });
 
 buildTable();
 loadSampleData();
+resizeLeft();
