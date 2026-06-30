@@ -85,9 +85,10 @@ function computeAllSteps() {
     let a = gdA0;
     for (let i = 0; i < gdN; i++) {
         const g = gradient(a, corrPts);
-        if (Math.abs(g) < 0.001) break;
         a = a - gdAlpha * g;
-        gdHistory.push({a, mse: mse(a, corrPts), grad: gradient(a, corrPts)});
+        const newGrad = gradient(a, corrPts);
+        gdHistory.push({a, mse: mse(a, corrPts), grad: newGrad});
+        if (Math.abs(newGrad) < 0.001) break;
     }
 }
 
@@ -631,10 +632,7 @@ document.getElementById('speedSlider').addEventListener('input', () => {
 });
 document.getElementById('btnPlay').addEventListener('click', gdPlay);
 document.getElementById('btnPause').addEventListener('click', gdPause);
-document.getElementById('btnGdReset').addEventListener('click', () => {
-    gdStop(); gdCurrentStep = 0;
-    updateGdControls(); updateRight(); redrawLeft(); redrawMid();
-});
+document.getElementById('btnGdReset').addEventListener('click', gdReset);
 
 /* ═══════════════════════════════
    INIT
