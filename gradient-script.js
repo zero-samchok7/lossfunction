@@ -63,11 +63,173 @@ function fmtN(n, d) {
     return n.toFixed(d !== undefined ? d : 3);
 }
 
-/* ─ placeholders (구현은 Task 4~5에서) ─ */
-function redrawMid() {}
+/* ─ placeholders (구현은 Task 5에서) ─ */
 function updateRight() {}
 function gdReset() {}
-function resizeMid() {}
+
+/* ═══════════════════════════════
+   MIDDLE CANVAS
+═══════════════════════════════ */
+const midCvs = document.getElementById('midCvs');
+const midCtx = midCvs.getContext('2d');
+const MPAD = {top: 22, right: 18, bottom: 44, left: 56};
+let MW = 0, MH = 0;
+let midVP = {aMin: -3, aMax: 3, mseMin: 0, mseMax: 10, ta: 1, tm: 2};
+
+function resizeMid() {
+    const wrap = document.getElementById('midCanvasWrap');
+    MW = midCvs.width  = wrap.clientWidth  - 4;
+    MH = midCvs.height = wrap.clientHeight - 4;
+    redrawMid();
+}
+
+function mPW() { return MW - MPAD.left - MPAD.right; }
+function mPH() { return MH - MPAD.top  - MPAD.bottom; }
+function mCX(a)   { return MPAD.left + (a   - midVP.aMin) / (midVP.aMax - midVP.aMin) * mPW(); }
+function mCY(m)   { return MPAD.top  + (1 - (m - midVP.mseMin) / (midVP.mseMax - midVP.mseMin)) * mPH(); }
+function mDatA(cx){ return midVP.aMin + (cx - MPAD.left) / mPW() * (midVP.aMax - midVP.aMin); }
+
+function calcMidVP(aOpt, a0start, pts) {
+    const spread = Math.max(Math.abs(aOpt - a0start) * 1.4, Math.abs(aOpt) * 0.8, 2.5);
+    const aLo = aOpt - spread, aHi = aOpt + spread;
+    let mseMax = 0;
+    for (let i = 0; i <= 80; i++) {
+        const a = aLo + (aHi - aLo) * i / 80;
+        const m = mse(a, pts);
+        if (!isNaN(m)) mseMax = Math.max(mseMax, m);
+    }
+    mseMax = (mseMax || 10) * 1.2;
+    const ta = niceStep((aHi - aLo) / 5);
+    const tm = niceStep(mseMax / 4);
+    return {
+        aMin: Math.floor(aLo / ta) * ta,
+        aMax: Math.ceil(aHi / ta) * ta,
+        mseMin: 0,
+        mseMax: Math.ceil(mseMax / tm) * tm,
+        ta, tm
+    };
+}
+
+function redrawMid() {
+    if (!MW || !MH) return;
+    midCtx.clearRect(0, 0, MW, MH);
+    const hint = document.getElementById('midHint');
+    if (corrPts.length < 2) { hint.style.display = ''; return; }
+    hint.style.display = 'none';
+
+    const aOpt = optimalA(corrPts);
+    const a0ref = gdHistory.length > 0 ? gdHistory[0].a : gdA0;
+    midVP = calcMidVP(aOpt, a0ref, corrPts);
+
+    // Grid
+    midCtx.save(); midCtx.strokeStyle = '#edf2f7'; midCtx.lineWidth = 1;
+    for (let a = Math.ceil(midVP.aMin / midVP.ta) * midVP.ta; a <= midVP.aMax + 1e-9; a += midVP.ta) {
+        const cx = mCX(Math.round(a * 1e9) / 1e9);
+        midCtx.beginPath(); midCtx.moveTo(cx, MPAD.top); midCtx.lineTo(cx, MH - MPAD.bottom); midCtx.stroke();
+    }
+    for (let m = 0; m <= midVP.mseMax + 1e-9; m += midVP.tm) {
+        const cy = mCY(Math.round(m * 1e9) / 1e9);
+        midCtx.beginPath(); midCtx.moveTo(MPAD.left, cy); midCtx.lineTo(MW - MPAD.right, cy); midCtx.stroke();
+    }
+    midCtx.restore();
+
+    // Axes + labels
+    midCtx.save(); midCtx.strokeStyle = '#cbd5e0'; midCtx.lineWidth = 1.5;
+    midCtx.beginPath(); midCtx.moveTo(MPAD.left, mCY(0)); midCtx.lineTo(MW - MPAD.right, mCY(0)); midCtx.stroke();
+    const axX = (midVP.aMin <= 0 && midVP.aMax >= 0) ? mCX(0) : MPAD.left;
+    midCtx.beginPath(); midCtx.moveTo(axX, MPAD.top); midCtx.lineTo(axX, MH - MPAD.bottom); midCtx.stroke();
+    const fs = Math.max(9, MW * 0.02);
+    midCtx.font = `${fs}px sans-serif`; midCtx.fillStyle = '#a0aec0';
+    midCtx.textAlign = 'center'; midCtx.textBaseline = 'top';
+    for (let a = Math.ceil(midVP.aMin / midVP.ta) * midVP.ta; a <= midVP.aMax + 1e-9; a += midVP.ta)
+        midCtx.fillText(Math.round(a * 1e9) / 1e9, mCX(Math.round(a * 1e9) / 1e9), MH - MPAD.bottom + 4);
+    midCtx.textAlign = 'right'; midCtx.textBaseline = 'middle';
+    for (let m = 0; m <= midVP.mseMax + 1e-9; m += midVP.tm)
+        midCtx.fillText(Math.round(m * 1e9) / 1e9, MPAD.left - 4, mCY(Math.round(m * 1e9) / 1e9));
+    midCtx.fillStyle = '#718096';
+    midCtx.font = `bold ${fs}px sans-serif`;
+    midCtx.textAlign = 'center'; midCtx.textBaseline = 'bottom';
+    midCtx.fillText('기울기 a', MPAD.left + mPW() / 2, MH - 2);
+    midCtx.save(); midCtx.translate(13, MPAD.top + mPH() / 2); midCtx.rotate(-Math.PI / 2);
+    midCtx.fillText('MSE', 0, 0); midCtx.restore();
+    midCtx.restore();
+
+    // Parabola
+    midCtx.save(); midCtx.strokeStyle = '#667eea'; midCtx.lineWidth = 2.5; midCtx.setLineDash([]);
+    midCtx.beginPath();
+    let started = false;
+    for (let i = 0; i <= 300; i++) {
+        const a = midVP.aMin + (midVP.aMax - midVP.aMin) * i / 300;
+        const m = mse(a, corrPts);
+        if (isNaN(m) || m > midVP.mseMax * 1.05) { started = false; continue; }
+        const cx = mCX(a), cy = mCY(m);
+        if (!started) { midCtx.moveTo(cx, cy); started = true; } else { midCtx.lineTo(cx, cy); }
+    }
+    midCtx.stroke(); midCtx.restore();
+
+    // Minimum ★
+    const mOpt = mse(aOpt, corrPts);
+    if (mOpt <= midVP.mseMax) {
+        midCtx.save();
+        midCtx.fillStyle = '#e53e3e'; midCtx.font = `bold 15px sans-serif`;
+        midCtx.textAlign = 'center'; midCtx.textBaseline = 'bottom';
+        midCtx.fillText('★', mCX(aOpt), mCY(mOpt) - 2);
+        midCtx.restore();
+    }
+
+    // Trail
+    if (gdHistory.length > 1 && gdCurrentStep >= 1) {
+        midCtx.save();
+        for (let i = 1; i <= gdCurrentStep; i++) {
+            const p = gdHistory[i - 1], q = gdHistory[i];
+            if (p.mse > midVP.mseMax || q.mse > midVP.mseMax) continue;
+            const alpha = 0.25 + 0.75 * (i / gdHistory.length);
+            midCtx.strokeStyle = `rgba(43,108,176,${alpha.toFixed(2)})`;
+            midCtx.lineWidth = 1.8; midCtx.setLineDash([3, 2]);
+            midCtx.beginPath();
+            midCtx.moveTo(mCX(p.a), mCY(p.mse));
+            midCtx.lineTo(mCX(q.a), mCY(q.mse));
+            midCtx.stroke();
+        }
+        midCtx.restore();
+    }
+
+    // Current point + tangent
+    if (gdHistory.length > 0) {
+        const cur = gdHistory[gdCurrentStep];
+        if (cur.mse <= midVP.mseMax) {
+            // Tangent
+            const g = cur.grad;
+            const dA = (midVP.aMax - midVP.aMin) * 0.12;
+            const aL = cur.a - dA, aR = cur.a + dA;
+            const mL = cur.mse + g * (aL - cur.a);
+            const mR = cur.mse + g * (aR - cur.a);
+            midCtx.save();
+            midCtx.strokeStyle = '#c53030'; midCtx.lineWidth = 1.5; midCtx.setLineDash([5, 3]);
+            midCtx.beginPath();
+            midCtx.moveTo(mCX(aL), mCY(mL));
+            midCtx.lineTo(mCX(aR), mCY(mR));
+            midCtx.stroke();
+            // Dot
+            midCtx.setLineDash([]);
+            midCtx.beginPath(); midCtx.arc(mCX(cur.a), mCY(cur.mse), 7, 0, Math.PI * 2);
+            midCtx.fillStyle = '#2b6cb0'; midCtx.fill();
+            midCtx.strokeStyle = '#fff'; midCtx.lineWidth = 2; midCtx.stroke();
+            midCtx.restore();
+        }
+    }
+}
+
+midCvs.addEventListener('click', e => {
+    if (corrPts.length < 2) return;
+    const rect = midCvs.getBoundingClientRect();
+    const cx = (e.clientX - rect.left) * (MW / rect.width);
+    const cy = (e.clientY - rect.top)  * (MH / rect.height);
+    if (cx < MPAD.left || cx > MW - MPAD.right || cy < MPAD.top || cy > MH - MPAD.bottom) return;
+    gdA0 = Math.round(mDatA(cx) * 100) / 100;
+    document.getElementById('a0Input').value = gdA0;
+    gdReset();
+});
 
 /* ═══════════════════════════════
    LEFT CANVAS
@@ -348,3 +510,4 @@ window.addEventListener('resize', () => { resizeLeft(); resizeMid(); });
 buildTable();
 loadSampleData();
 resizeLeft();
+resizeMid();
