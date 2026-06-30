@@ -68,6 +68,8 @@ function redrawLeft() {}
 function redrawMid() {}
 function updateRight() {}
 function gdReset() {}
+function resizeLeft() {}
+function resizeMid() {}
 
 /* ═══════════════════════════════
    TABLE
