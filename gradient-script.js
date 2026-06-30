@@ -287,13 +287,32 @@ function redrawMid() {
     }
     midCtx.stroke(); midCtx.restore();
 
-    // Minimum ★
+    // Minimum ★ + vertical guide line + a* label
     const mOpt = mse(aOpt, corrPts);
     if (mOpt <= midVP.mseMax) {
         midCtx.save();
+        // Vertical dashed line from ★ to x-axis
+        midCtx.strokeStyle = 'rgba(229,62,62,0.5)';
+        midCtx.lineWidth = 1.2;
+        midCtx.setLineDash([4, 3]);
+        midCtx.beginPath();
+        midCtx.moveTo(mCX(aOpt), mCY(mOpt));
+        midCtx.lineTo(mCX(aOpt), MH - MPAD.bottom);
+        midCtx.stroke();
+        midCtx.setLineDash([]);
+        // ★ at minimum
         midCtx.fillStyle = '#e53e3e'; midCtx.font = `bold 15px sans-serif`;
         midCtx.textAlign = 'center'; midCtx.textBaseline = 'bottom';
         midCtx.fillText('★', mCX(aOpt), mCY(mOpt) - 2);
+        // a* label at x-axis with white background
+        const aLabel = `a*=${fmtN(aOpt, 2)}`;
+        midCtx.font = `bold ${fs}px sans-serif`;
+        midCtx.textAlign = 'center'; midCtx.textBaseline = 'top';
+        const lw2 = midCtx.measureText(aLabel).width;
+        midCtx.fillStyle = 'rgba(255,255,255,0.85)';
+        midCtx.fillRect(mCX(aOpt) - lw2/2 - 2, MH - MPAD.bottom + 3, lw2 + 4, parseInt(midCtx.font) + 2);
+        midCtx.fillStyle = '#e53e3e';
+        midCtx.fillText(aLabel, mCX(aOpt), MH - MPAD.bottom + 4);
         midCtx.restore();
     }
 
@@ -305,7 +324,7 @@ function redrawMid() {
             if (p.mse > midVP.mseMax || q.mse > midVP.mseMax) continue;
             const alpha = 0.25 + 0.75 * (i / gdHistory.length);
             midCtx.strokeStyle = `rgba(43,108,176,${alpha.toFixed(2)})`;
-            midCtx.lineWidth = 1.8; midCtx.setLineDash([3, 2]);
+            midCtx.lineWidth = 3.0; midCtx.setLineDash([5, 3]);
             midCtx.beginPath();
             midCtx.moveTo(mCX(p.a), mCY(p.mse));
             midCtx.lineTo(mCX(q.a), mCY(q.mse));
@@ -325,7 +344,7 @@ function redrawMid() {
             const mL = cur.mse + g * (aL - cur.a);
             const mR = cur.mse + g * (aR - cur.a);
             midCtx.save();
-            midCtx.strokeStyle = '#c53030'; midCtx.lineWidth = 1.5; midCtx.setLineDash([5, 3]);
+            midCtx.strokeStyle = '#c53030'; midCtx.lineWidth = 2.5; midCtx.setLineDash([5, 3]);
             midCtx.beginPath();
             midCtx.moveTo(mCX(aL), mCY(mL));
             midCtx.lineTo(mCX(aR), mCY(mR));
@@ -420,20 +439,28 @@ function redrawLeft() {
         leftCtx.fillText(Math.round(y * 1e9) / 1e9, LPAD.left - 3, lCY(Math.round(y * 1e9) / 1e9));
     leftCtx.restore();
 
-    // Trend line
+    // Trend line trail
     const curA = gdHistory.length > 0 ? gdHistory[gdCurrentStep].a : null;
-    if (curA !== null) {
-        leftCtx.save(); leftCtx.strokeStyle = '#c53030'; leftCtx.lineWidth = 2; leftCtx.setLineDash([]);
-        if (viewMode === 'corrected') {
+    if (gdHistory.length > 0) {
+        for (let i = 0; i <= gdCurrentStep; i++) {
+            const a = gdHistory[i].a;
+            const alpha = gdCurrentStep === 0 ? 1 : 0.12 + 0.88 * (i / gdCurrentStep);
+            const lw = i === gdCurrentStep ? 2 : 1.2;
+            leftCtx.save();
+            leftCtx.strokeStyle = `rgba(197,48,48,${alpha.toFixed(2)})`;
+            leftCtx.lineWidth = lw;
+            leftCtx.setLineDash([]);
             leftCtx.beginPath();
-            leftCtx.moveTo(lCX(leftVP.xMin), lCY(curA * leftVP.xMin));
-            leftCtx.lineTo(lCX(leftVP.xMax), lCY(curA * leftVP.xMax));
-        } else {
-            leftCtx.beginPath();
-            leftCtx.moveTo(lCX(leftVP.xMin), lCY(curA * (leftVP.xMin - xbar) + ybar));
-            leftCtx.lineTo(lCX(leftVP.xMax), lCY(curA * (leftVP.xMax - xbar) + ybar));
+            if (viewMode === 'corrected') {
+                leftCtx.moveTo(lCX(leftVP.xMin), lCY(a * leftVP.xMin));
+                leftCtx.lineTo(lCX(leftVP.xMax), lCY(a * leftVP.xMax));
+            } else {
+                leftCtx.moveTo(lCX(leftVP.xMin), lCY(a * (leftVP.xMin - xbar) + ybar));
+                leftCtx.lineTo(lCX(leftVP.xMax), lCY(a * (leftVP.xMax - xbar) + ybar));
+            }
+            leftCtx.stroke();
+            leftCtx.restore();
         }
-        leftCtx.stroke(); leftCtx.restore();
     }
 
     // Centroid marker (오렌지 십자)
@@ -444,6 +471,14 @@ function redrawLeft() {
         leftCtx.save(); leftCtx.strokeStyle = '#ed8936'; leftCtx.lineWidth = 1.8;
         leftCtx.beginPath(); leftCtx.moveTo(px - sz, py); leftCtx.lineTo(px + sz, py); leftCtx.stroke();
         leftCtx.beginPath(); leftCtx.moveTo(px, py - sz); leftCtx.lineTo(px, py + sz); leftCtx.stroke();
+        if (viewMode === 'corrected') {
+            const lfs = Math.max(9, LW * 0.03);
+            leftCtx.fillStyle = '#ed8936';
+            leftCtx.font = `${lfs}px sans-serif`;
+            leftCtx.textAlign = 'left';
+            leftCtx.textBaseline = 'bottom';
+            leftCtx.fillText(`(x̄=${fmtN(xbar,2)}, ȳ=${fmtN(ybar,2)})`, px + 9, py - 4);
+        }
         leftCtx.restore();
     }
 
