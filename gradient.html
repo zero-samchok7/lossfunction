@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>경사하강법 탐구</title>
+    <link rel="stylesheet" href="gradient-style.css">
+</head>
+<body>
+<header>경사하강법 탐구</header>
+<div class="main">
+
+    <!-- LEFT: 데이터 & 산점도 -->
+    <div class="panel panel-left">
+        <div class="panel-title">데이터 &amp; 산점도</div>
+        <div class="left-top">
+            <div class="btn-row">
+                <button id="btnSample">샘플 생성</button>
+                <button id="btnReset">초기화</button>
+                <button id="btnToggleView" disabled>보정 보기</button>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th></th><th>x</th><th>y</th><th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="left-bottom">
+            <div class="canvas-wrap" id="leftCanvasWrap">
+                <canvas id="leftCvs"></canvas>
+            </div>
+            <div class="eq-row">
+                <span id="leftEq" class="eq-ph">데이터를 입력하세요</span>
+            </div>
+            <div class="mse-row">
+                <span class="mse-label">MSE</span>
+                <span id="leftMse" class="mse-val">—</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MIDDLE: MSE 포물선 -->
+    <div class="panel panel-mid">
+        <div class="panel-title">MSE 포물선</div>
+        <div class="canvas-wrap mid-canvas-wrap" id="midCanvasWrap">
+            <canvas id="midCvs"></canvas>
+            <div class="mid-hint" id="midHint">데이터를 입력하면 포물선이 나타납니다</div>
+        </div>
+        <div class="mid-controls">
+            <button id="btnPlay" disabled>▶ 실행</button>
+            <button id="btnPause" disabled>⏸ 일시정지</button>
+            <button id="btnGdReset" disabled>↺ 초기화</button>
+            <div class="slider-row">
+                <label>속도</label>
+                <input type="range" id="speedSlider" min="1" max="5" value="3">
+            </div>
+            <div class="slider-row">
+                <label>단계 <span id="stepDisplay">0</span></label>
+                <input type="range" id="stepSlider" min="0" max="0" value="0" disabled>
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT: 컨트롤 & 수치 -->
+    <div class="panel panel-right">
+        <div class="panel-title">컨트롤 &amp; 수치</div>
+        <div class="right-scroll">
+            <div class="ctrl-sec">
+                <div class="sec-label">초기 설정</div>
+                <div class="ctrl-row">
+                    <label>초깃값 a₀</label>
+                    <input type="number" id="a0Input" step="0.1" value="0">
+                </div>
+                <div class="ctrl-row">
+                    <label>학습률 α &nbsp;<span id="alphaDisplay">0.10</span></label>
+                    <input type="range" id="alphaSlider" min="0.01" max="1.0" step="0.01" value="0.10">
+                </div>
+                <div class="ctrl-row">
+                    <label>반복 횟수 n &nbsp;<span id="nDisplay">10</span></label>
+                    <input type="range" id="nSlider" min="1" max="30" value="10">
+                </div>
+            </div>
+            <div class="ctrl-sec">
+                <div class="sec-label">경사하강법 공식</div>
+                <div class="formula-box">
+                    <div class="formula-line">a<sub>new</sub> = a<sub>old</sub> &minus; α &times; (dMSE/da)</div>
+                    <div class="formula-line formula-vals" id="formulaVals">—</div>
+                </div>
+            </div>
+            <div class="ctrl-sec">
+                <div class="sec-label">현재 단계</div>
+                <div class="stat-row"><span class="stat-label">단계</span><span id="statStep" class="stat-val">—</span></div>
+                <div class="stat-row"><span class="stat-label">a</span><span id="statA" class="stat-val">—</span></div>
+                <div class="stat-row"><span class="stat-label">MSE</span><span id="statMse" class="stat-val">—</span></div>
+                <div class="stat-row"><span class="stat-label">dMSE/da</span><span id="statGrad" class="stat-val">—</span></div>
+                <div id="convergeBox" class="converge-box" style="display:none">수렴 완료 ✓</div>
+            </div>
+            <div class="ctrl-sec hist-sec">
+                <div class="sec-label">단계별 기록</div>
+                <div class="hist-wrap">
+                    <table class="hist-table">
+                        <thead><tr><th>n</th><th>a</th><th>MSE</th><th>dMSE/da</th></tr></thead>
+                        <tbody id="histTbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+<script src="gradient-script.js"></script>
+</body>
+</html>
