@@ -63,9 +63,128 @@ function fmtN(n, d) {
     return n.toFixed(d !== undefined ? d : 3);
 }
 
-/* ─ placeholders (구현은 Task 5에서) ─ */
-function updateRight() {}
-function gdReset() {}
+/* ═══════════════════════════════
+   GRADIENT DESCENT ENGINE
+═══════════════════════════════ */
+function gdReset() {
+    gdStop();
+    gdHistory = [];
+    gdCurrentStep = 0;
+    if (corrPts.length >= 2) {
+        gdHistory.push({a: gdA0, mse: mse(gdA0, corrPts), grad: gradient(gdA0, corrPts)});
+        computeAllSteps();
+    }
+    updateGdControls();
+    updateStepSlider();
+    updateRight();
+    redrawLeft();
+    redrawMid();
+}
+
+function computeAllSteps() {
+    let a = gdA0;
+    for (let i = 0; i < gdN; i++) {
+        const g = gradient(a, corrPts);
+        if (Math.abs(g) < 0.001) break;
+        a = a - gdAlpha * g;
+        gdHistory.push({a, mse: mse(a, corrPts), grad: gradient(a, corrPts)});
+    }
+}
+
+function gdGoToStep(step) {
+    gdCurrentStep = Math.max(0, Math.min(step, gdHistory.length - 1));
+    document.getElementById('stepSlider').value = gdCurrentStep;
+    document.getElementById('stepDisplay').textContent = gdCurrentStep;
+    updateRight();
+    redrawLeft();
+    redrawMid();
+}
+
+function gdStop() {
+    gdRunning = false;
+    clearInterval(gdTimer);
+    gdTimer = null;
+}
+
+function gdPlay() {
+    if (gdRunning || corrPts.length < 2 || gdHistory.length === 0) return;
+    if (gdCurrentStep >= gdHistory.length - 1) gdCurrentStep = 0;
+    gdRunning = true;
+    updateGdControls();
+    const speedMap = {1: 1000, 2: 700, 3: 450, 4: 250, 5: 120};
+    const delay = speedMap[+document.getElementById('speedSlider').value] || 450;
+    gdTimer = setInterval(() => {
+        if (gdCurrentStep >= gdHistory.length - 1) {
+            gdStop(); updateGdControls(); return;
+        }
+        gdGoToStep(gdCurrentStep + 1);
+    }, delay);
+}
+
+function gdPause() { gdStop(); updateGdControls(); }
+
+function updateGdControls() {
+    const has = corrPts.length >= 2 && gdHistory.length > 0;
+    document.getElementById('btnPlay').disabled    = !has || gdRunning;
+    document.getElementById('btnPause').disabled   = !gdRunning;
+    document.getElementById('btnGdReset').disabled = !has;
+    updateStepSlider();
+}
+
+function updateStepSlider() {
+    const slider = document.getElementById('stepSlider');
+    const maxStep = Math.max(0, gdHistory.length - 1);
+    slider.max = maxStep;
+    slider.value = gdCurrentStep;
+    slider.disabled = maxStep === 0;
+    document.getElementById('stepDisplay').textContent = gdCurrentStep;
+}
+
+function updateRight() {
+    if (gdHistory.length === 0 || corrPts.length < 2) {
+        document.getElementById('formulaVals').textContent = '—';
+        ['statStep','statA','statMse','statGrad'].forEach(id =>
+            document.getElementById(id).textContent = '—');
+        document.getElementById('convergeBox').style.display = 'none';
+        document.getElementById('histTbody').innerHTML = '';
+        return;
+    }
+
+    const cur  = gdHistory[gdCurrentStep];
+    const prev = gdCurrentStep > 0 ? gdHistory[gdCurrentStep - 1] : null;
+
+    // Formula
+    const fv = document.getElementById('formulaVals');
+    if (prev) {
+        const newA = prev.a - gdAlpha * prev.grad;
+        fv.innerHTML =
+            `= ${fmtN(prev.a,4)} &minus; ${fmtN(gdAlpha,2)} &times; (${fmtN(prev.grad,4)})<br>= ${fmtN(newA,4)}`;
+    } else {
+        fv.textContent = `출발점: a₀ = ${fmtN(cur.a, 4)}`;
+    }
+
+    // Stats
+    document.getElementById('statStep').textContent = gdCurrentStep;
+    document.getElementById('statA').textContent    = fmtN(cur.a, 4);
+    document.getElementById('statMse').textContent  = fmtN(cur.mse, 4);
+    document.getElementById('statGrad').textContent = fmtN(cur.grad, 4);
+
+    // Convergence
+    document.getElementById('convergeBox').style.display =
+        Math.abs(cur.grad) < 0.001 ? '' : 'none';
+
+    // History table
+    const tb = document.getElementById('histTbody');
+    tb.innerHTML = '';
+    for (let i = 0; i <= gdCurrentStep; i++) {
+        const h = gdHistory[i];
+        const tr = document.createElement('tr');
+        if (i === gdCurrentStep) tr.className = 'current-row';
+        tr.innerHTML = `<td>${i}</td><td>${fmtN(h.a,3)}</td><td>${fmtN(h.mse,3)}</td><td>${fmtN(h.grad,3)}</td>`;
+        tb.appendChild(tr);
+    }
+    if (tb.lastChild) tb.lastChild.scrollIntoView({block: 'nearest'});
+}
 
 /* ═══════════════════════════════
    MIDDLE CANVAS
@@ -489,6 +608,36 @@ function onDataChange() {
     redrawMid();
     updateRight();
 }
+
+/* ═══════════════════════════════
+   RIGHT PANEL EVENTS
+═══════════════════════════════ */
+document.getElementById('a0Input').addEventListener('input', e => {
+    const v = parseFloat(e.target.value);
+    if (!isNaN(v)) { gdA0 = v; gdReset(); redrawLeft(); redrawMid(); updateRight(); }
+});
+document.getElementById('alphaSlider').addEventListener('input', e => {
+    gdAlpha = +e.target.value;
+    document.getElementById('alphaDisplay').textContent = gdAlpha.toFixed(2);
+    gdReset(); redrawLeft(); redrawMid(); updateRight();
+});
+document.getElementById('nSlider').addEventListener('input', e => {
+    gdN = +e.target.value;
+    document.getElementById('nDisplay').textContent = gdN;
+    gdReset(); redrawLeft(); redrawMid(); updateRight();
+});
+document.getElementById('stepSlider').addEventListener('input', e => {
+    gdStop(); updateGdControls(); gdGoToStep(+e.target.value);
+});
+document.getElementById('speedSlider').addEventListener('input', () => {
+    if (gdRunning) { gdStop(); gdPlay(); }
+});
+document.getElementById('btnPlay').addEventListener('click', gdPlay);
+document.getElementById('btnPause').addEventListener('click', gdPause);
+document.getElementById('btnGdReset').addEventListener('click', () => {
+    gdStop(); gdCurrentStep = 0;
+    updateGdControls(); updateRight(); redrawLeft(); redrawMid();
+});
 
 /* ═══════════════════════════════
    INIT
