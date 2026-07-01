@@ -1,0 +1,25 @@
+# 환경변수 / API 키
+.env
+.env.*
+*.env
+
+# 설정 파일에 키를 직접 쓴 경우
+config.js
+config.local.js
+secrets.js
+
+# 흔한 API 키 파일명 패턴
+*secret*
+*apikey*
+*api_key*
+*api-key*
+*.key
+
+# OS / 에디터 찌꺼기
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 작업용 임시 파일
+*.log
+*.tmp
