@@ -14,7 +14,29 @@
         header {
             text-align: center; padding: 9px 16px; font-size: 1.05rem; font-weight: 700;
             background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.08); flex-shrink: 0;
+            position: relative;
         }
+        .back-link {
+            position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+            font-size: 0.82rem; color: #a0aec0; text-decoration: none; font-weight: 600;
+        }
+        .back-link:hover { color: #667eea; }
+        .btn-row {
+            display: flex; gap: 6px; padding: 7px 10px 5px; flex-shrink: 0;
+            border-bottom: 1px solid #f0f4f8;
+        }
+        .btn-sample {
+            flex: 1; padding: 5px 0; background: #ebf8ff; color: #2b6cb0;
+            border: 1px solid #bee3f8; border-radius: 6px;
+            font-size: 0.78rem; font-weight: 700; cursor: pointer;
+        }
+        .btn-sample:hover { background: #bee3f8; }
+        .btn-reset-all {
+            flex: 1; padding: 5px 0; background: #fff5f5; color: #e53e3e;
+            border: 1px solid #fed7d7; border-radius: 6px;
+            font-size: 0.78rem; font-weight: 700; cursor: pointer;
+        }
+        .btn-reset-all:hover { background: #fed7d7; }
         .main { display: flex; flex: 1; gap: 8px; padding: 8px; overflow: hidden; min-height: 0; }
         .panel {
             background: #fff; border-radius: 14px; box-shadow: 0 1px 6px rgba(0,0,0,0.07);
@@ -123,12 +145,16 @@
     </style>
 </head>
 <body>
-<header>추세선 탐구</header>
+<header><a href="index.html" class="back-link">← 목록</a>추세선 탐구</header>
 <div class="main">
 
     <!-- LEFT -->
     <div class="panel panel-left">
         <div class="panel-title">데이터 입력</div>
+        <div class="btn-row">
+            <button class="btn-sample" onclick="loadSample()">샘플 생성</button>
+            <button class="btn-reset-all" onclick="resetAll()">초기화</button>
+        </div>
         <div class="table-wrap">
             <table>
                 <thead>
@@ -751,6 +777,46 @@ cvs.addEventListener('touchend', e => {
     if (!tMoved && tStart) onTap(tStart.cx, tStart.cy);
     tStart=null;
 },{passive:false});
+
+/* ═══════════════════════════════
+   SAMPLE / RESET
+═══════════════════════════════ */
+function generateSampleData() {
+    const n = 8 + Math.floor(Math.random() * 5);
+    const a = Math.random() * 3 - 0.5;
+    const b = Math.random() * 10 + 2;
+    const pts = [];
+    for (let i = 0; i < n; i++) {
+        const x = Math.round((Math.random() * 14 + 1) * 10) / 10;
+        const y = Math.round((a * x + b + (Math.random() * 4 - 2)) * 10) / 10;
+        pts.push({x: String(x), y: String(y)});
+    }
+    return pts;
+}
+function loadSample() {
+    const pts = generateSampleData();
+    tableData = Array.from({length: rowCount}, () => ({x:'', y:''}));
+    pts.forEach((p, i) => { if (i < rowCount) tableData[i] = p; });
+    for (let i = 0; i < rowCount; i++) {
+        const xi = document.querySelector(`input[data-r="${i}"][data-c="x"]`);
+        const yi = document.querySelector(`input[data-r="${i}"][data-c="y"]`);
+        if (xi) { xi.value = tableData[i].x; xi.classList.toggle('has-val', tableData[i].x !== ''); }
+        if (yi) { yi.value = tableData[i].y; yi.classList.toggle('has-val', tableData[i].y !== ''); }
+    }
+    userLine = null; trendOn = false; dstate = 'idle'; anchor1 = null; mseScale = null;
+    onDataChange();
+}
+function resetAll() {
+    tableData = Array.from({length: rowCount}, () => ({x:'', y:''}));
+    for (let i = 0; i < rowCount; i++) {
+        const xi = document.querySelector(`input[data-r="${i}"][data-c="x"]`);
+        const yi = document.querySelector(`input[data-r="${i}"][data-c="y"]`);
+        if (xi) { xi.value = ''; xi.classList.remove('has-val'); }
+        if (yi) { yi.value = ''; yi.classList.remove('has-val'); }
+    }
+    userLine = null; trendOn = false; dstate = 'idle'; anchor1 = null; mseScale = null;
+    onDataChange();
+}
 
 /* ═══════════════════════════════
    INIT
