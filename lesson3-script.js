@@ -289,8 +289,8 @@ function updateTable() {
       + '<td><input type="number" value="' + p.x + '" min="0" max="20" step="0.1"></td>'
       + '<td><input type="number" value="' + p.y + '" min="0" max="20" step="0.1"></td>';
     var inputs = tr.querySelectorAll('input');
-    inputs[0].addEventListener('change', function() { pts[i].x=+this.value; updateCoeffDisplay(); updateADisplay(); });
-    inputs[1].addEventListener('change', function() { pts[i].y=+this.value; updateCoeffDisplay(); updateADisplay(); });
+    inputs[0].addEventListener('change', function() { pts[i].x=+this.value; resetSteps(); updateCoeffDisplay(); updateADisplay(); });
+    inputs[1].addEventListener('change', function() { pts[i].y=+this.value; resetSteps(); updateCoeffDisplay(); updateADisplay(); });
     body.appendChild(tr);
   });
 }
