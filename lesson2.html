@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2차시 — y=ax 직선 비교</title>
+  <link rel="stylesheet" href="lesson-common.css">
+  <style>
+    #mainCanvas { width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <header class="lesson-header">
+    <a href="index.html" class="back-link">← 목록</a>
+    <span class="lesson-title">2차시 — y=ax 직선 비교</span>
+  </header>
+  <main class="lesson-body">
+
+    <!-- 좌측: 데이터 입력 -->
+    <div class="panel-left">
+      <div class="panel-section">
+        <span class="section-label">데이터 (0~20)</span>
+        <table class="data-table" id="dataTable">
+          <thead><tr><th>#</th><th>x</th><th>y</th></tr></thead>
+          <tbody id="dataBody"></tbody>
+        </table>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" id="btnSample">샘플 생성</button>
+        <button class="btn btn-ghost" id="btnReset">초기화</button>
+      </div>
+    </div>
+
+    <!-- 중간: 캔버스 -->
+    <div class="panel-mid">
+      <canvas id="mainCanvas"></canvas>
+    </div>
+
+    <!-- 우측: 슬라이더 + MSE -->
+    <div class="panel-right">
+      <div class="panel-section">
+        <span class="section-label" style="color:#e74c3c;">직선 1 (빨강)</span>
+        <div class="slider-row">
+          <label>a₁</label>
+          <input type="range" id="slider1" min="0" max="20" step="0.1" value="1.0">
+          <span class="slider-val" id="val1" style="color:#e74c3c;">1.0</span>
+        </div>
+      </div>
+      <div class="panel-section">
+        <span class="section-label" style="color:#2980b9;">직선 2 (파랑)</span>
+        <div class="slider-row">
+          <label>a₂</label>
+          <input type="range" id="slider2" min="0" max="20" step="0.1" value="2.0">
+          <span class="slider-val" id="val2" style="color:#2980b9;">2.0</span>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <span class="section-label">손실함수 (MSE)</span>
+        <div class="formula-box" id="formulaBox1">
+          데이터를 입력하면 식이 표시됩니다.
+        </div>
+        <div class="formula-box" id="formulaBox2" style="margin-top:4px;">
+          &nbsp;
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <span class="section-label">MSE 비교</span>
+        <div class="compare-row">
+          <div class="compare-cell" id="cell1">
+            <div class="c-label">직선 1</div>
+            <div class="c-val" id="mseVal1">—</div>
+          </div>
+          <div class="compare-cell" id="cell2">
+            <div class="c-label">직선 2</div>
+            <div class="c-val" id="mseVal2">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <button class="btn btn-primary" id="btnOptimal">최적 추세선 표시</button>
+        <div class="result-box" id="optimalBox">
+          <div class="result-row">
+            <span class="result-label">MSE(a) =</span>
+            <span style="font-size:0.7rem;font-family:monospace;" id="optFormula"></span>
+          </div>
+          <div class="result-row">
+            <span class="result-label">최적 기울기 a*</span>
+            <span class="result-val" id="optA">—</span>
+          </div>
+          <div class="result-row">
+            <span class="result-label">최솟값 MSE(a*)</span>
+            <span class="result-val" id="optMSE">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+  <script src="lesson2-script.js"></script>
+</body>
+</html>
