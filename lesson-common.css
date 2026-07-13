@@ -1,0 +1,224 @@
+/* ===== CSS 변수 ===== */
+:root {
+  --accent: #6c5ce7;
+  --accent-dark: #5a4bd1;
+  --accent-light: #f0eeff;
+  --bg: #f8f9fa;
+  --panel-bg: #ffffff;
+  --border: #e2e8f0;
+  --text: #2d3748;
+  --text-muted: #718096;
+  --header-h: 48px;
+}
+
+/* ===== 리셋 + 기본 ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  background: var(--bg);
+  color: var(--text);
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===== 헤더 ===== */
+.lesson-header {
+  height: var(--header-h);
+  background: var(--panel-bg);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+}
+.back-link {
+  position: absolute;
+  left: 14px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  font-weight: 600;
+}
+.back-link:hover { color: var(--accent); }
+.lesson-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* ===== 3패널 레이아웃 ===== */
+.lesson-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+.panel-left {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--panel-bg);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 12px;
+  gap: 10px;
+}
+.panel-mid {
+  flex: 1;
+  background: var(--bg);
+  position: relative;
+  overflow: hidden;
+}
+.panel-right {
+  width: 264px;
+  flex-shrink: 0;
+  background: var(--panel-bg);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 12px;
+  gap: 10px;
+}
+
+/* ===== 패널 섹션 ===== */
+.panel-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.section-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ===== 버튼 ===== */
+.btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-dark); }
+.btn-secondary { background: var(--accent-light); color: var(--accent); }
+.btn-secondary:hover { background: #e0d9ff; }
+.btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+.btn-ghost:hover { background: var(--bg); }
+.btn-row { display: flex; gap: 6px; }
+.btn-row .btn { flex: 1; }
+
+/* ===== 데이터 입력 테이블 ===== */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.data-table th {
+  background: var(--bg);
+  color: var(--text-muted);
+  font-weight: 700;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  text-align: center;
+}
+.data-table td {
+  padding: 2px 2px;
+  border: 1px solid var(--border);
+}
+.data-table input[type=number] {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--text);
+  outline: none;
+  padding: 2px 0;
+}
+.data-table input[type=number]:focus { background: var(--accent-light); }
+
+/* ===== 슬라이더 ===== */
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.slider-row label { font-size: 0.82rem; min-width: 24px; font-weight: 600; }
+.slider-row input[type=range] { flex: 1; accent-color: var(--accent); cursor: pointer; }
+.slider-val {
+  font-size: 0.85rem;
+  font-weight: 700;
+  min-width: 40px;
+  text-align: right;
+  color: var(--accent);
+}
+
+/* ===== 수식 박스 ===== */
+.formula-box {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.76rem;
+  line-height: 1.7;
+  font-family: 'Courier New', monospace;
+  color: var(--text);
+  word-break: break-all;
+}
+.formula-step {
+  display: none;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--border);
+  font-size: 0.76rem;
+  font-family: 'Courier New', monospace;
+  line-height: 1.7;
+}
+.formula-step.visible { display: block; }
+.formula-highlight { color: var(--accent); font-weight: 700; }
+
+/* ===== 결과 박스 ===== */
+.result-box {
+  display: none;
+  background: var(--accent-light);
+  border: 1px solid #c5b8ff;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.82rem;
+  gap: 4px;
+  flex-direction: column;
+}
+.result-box.visible { display: flex; }
+.result-row { display: flex; justify-content: space-between; align-items: baseline; }
+.result-label { color: var(--text-muted); font-size: 0.78rem; }
+.result-val { font-weight: 700; color: var(--accent); }
+
+/* ===== MSE 비교 박스 ===== */
+.compare-row { display: flex; gap: 8px; }
+.compare-cell {
+  flex: 1;
+  background: var(--bg);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 4px;
+  text-align: center;
+  transition: border-color 0.2s, background 0.2s;
+}
+.compare-cell.winner { border-color: var(--accent); background: var(--accent-light); }
+.compare-cell .c-label { font-size: 0.7rem; color: var(--text-muted); }
+.compare-cell .c-val { font-size: 1rem; font-weight: 700; margin-top: 2px; }
+
+/* ===== 캔버스 공통 ===== */
+canvas { display: block; }
