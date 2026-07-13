@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>1차시 — 추세선 직접 그리기</title>
+  <link rel="stylesheet" href="lesson-common.css">
+  <style>
+    .mode-toggle { display: flex; gap: 0; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+    .mode-toggle .btn { border-radius: 0; flex: 1; border: none; background: var(--bg); color: var(--text-muted); }
+    .mode-toggle .btn.active { background: var(--accent); color: #fff; }
+    .line-legend { display: flex; flex-direction: column; gap: 4px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; }
+    .legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+    .legend-eq { font-family: 'Courier New', monospace; color: var(--text); }
+    .legend-del { margin-left: auto; cursor: pointer; color: var(--text-muted); font-size: 0.7rem; }
+    .legend-del:hover { color: #e53e3e; }
+    /* 우측 패널 슬라이드 토글 */
+    #rightPanel { transition: width 0.2s; }
+    #rightPanel.hidden { width: 0; padding: 0; overflow: hidden; border: none; }
+    /* 오른쪽 펼침 버튼 */
+    #toggleRight {
+      position: absolute; top: 10px; right: 10px;
+      background: var(--panel-bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 4px 8px; cursor: pointer;
+      font-size: 0.78rem; font-weight: 700; color: var(--accent);
+      z-index: 10;
+    }
+    /* 예측/오차 테이블 숨김 열 */
+    .col-pred, .col-err { display: none; }
+    .col-pred.show, .col-err.show { display: table-cell; }
+    /* 캔버스 크기 */
+    #mainCanvas { width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <header class="lesson-header">
+    <a href="index.html" class="back-link">← 목록</a>
+    <span class="lesson-title">1차시 — 추세선 직접 그리기</span>
+  </header>
+  <main class="lesson-body">
+
+    <!-- 좌측: 데이터 입력 -->
+    <div class="panel-left">
+      <div class="panel-section">
+        <span class="section-label">데이터 입력</span>
+        <table class="data-table" id="dataTable">
+          <thead><tr><th>#</th><th>x</th><th>y</th></tr></thead>
+          <tbody id="dataBody"></tbody>
+        </table>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" id="btnSample">샘플 생성</button>
+        <button class="btn btn-ghost" id="btnReset">초기화</button>
+      </div>
+    </div>
+
+    <!-- 중간: 캔버스 -->
+    <div class="panel-mid">
+      <canvas id="mainCanvas"></canvas>
+      <!-- 모드 토글 (캔버스 위 좌측 상단) -->
+      <div style="position:absolute;top:10px;left:10px;z-index:10;">
+        <div class="mode-toggle">
+          <button class="btn active" id="btnModePoint">점 추가</button>
+          <button class="btn" id="btnModeLine">직선 그리기</button>
+        </div>
+      </div>
+      <!-- 펼침 버튼 -->
+      <button id="toggleRight">▶ 오차</button>
+    </div>
+
+    <!-- 우측: 예측·오차 패널 -->
+    <div class="panel-right hidden" id="rightPanel">
+      <div class="panel-section">
+        <span class="section-label">직선 선택</span>
+        <select id="lineSelect" class="btn btn-ghost" style="width:100%;text-align:center;"></select>
+      </div>
+      <div class="panel-section">
+        <div class="btn-row">
+          <button class="btn btn-secondary" id="btnShowPred">예측값 보기</button>
+          <button class="btn btn-secondary" id="btnShowErr">오차 보기</button>
+        </div>
+      </div>
+      <div class="panel-section">
+        <table class="data-table" id="predTable">
+          <thead>
+            <tr>
+              <th>x</th><th>y</th>
+              <th class="col-pred">ŷ</th>
+              <th class="col-err">y−ŷ</th>
+            </tr>
+          </thead>
+          <tbody id="predBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+  <script src="lesson1-script.js"></script>
+</body>
+</html>
