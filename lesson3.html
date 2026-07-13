@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3차시 — 손실함수와 최솟값</title>
+  <link rel="stylesheet" href="lesson-common.css">
+  <style>
+    /* 좌측 패널: 산점도 캔버스 + 데이터 테이블 */
+    #scatterCanvas { width: 100%; height: 180px; border-radius: 8px; border: 1px solid var(--border); }
+    /* 중간 패널: MSE 포물선 캔버스 전체 채움 */
+    #parabolaCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    /* a 슬라이더 값 색상 */
+    #aVal { color: var(--accent); font-weight: 700; }
+  </style>
+</head>
+<body>
+  <header class="lesson-header">
+    <a href="index.html" class="back-link">← 목록</a>
+    <span class="lesson-title">3차시 — 손실함수와 최솟값</span>
+  </header>
+  <main class="lesson-body">
+
+    <!-- 좌측: 산점도 + 데이터 -->
+    <div class="panel-left">
+      <div class="panel-section">
+        <span class="section-label">산점도</span>
+        <canvas id="scatterCanvas"></canvas>
+      </div>
+      <div class="panel-section">
+        <span class="section-label">데이터 (0~20)</span>
+        <table class="data-table" id="dataTable">
+          <thead><tr><th>#</th><th>x</th><th>y</th></tr></thead>
+          <tbody id="dataBody"></tbody>
+        </table>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" id="btnSample">샘플 생성</button>
+        <button class="btn btn-ghost" id="btnReset">초기화</button>
+      </div>
+    </div>
+
+    <!-- 중간: MSE 포물선 -->
+    <div class="panel-mid">
+      <canvas id="parabolaCanvas"></canvas>
+    </div>
+
+    <!-- 우측: 슬라이더 + 단계별 전개 + 최솟값 -->
+    <div class="panel-right">
+      <div class="panel-section">
+        <span class="section-label">기울기 a 선택</span>
+        <div class="slider-row">
+          <label>a</label>
+          <input type="range" id="aSlider" min="0" max="5" step="0.01" value="1.0">
+          <span id="aVal">1.00</span>
+        </div>
+        <div class="result-row" style="margin-top:4px;">
+          <span class="result-label">MSE(a) =</span>
+          <span class="result-val" id="mseDisplay">—</span>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <span class="section-label">손실함수 전개</span>
+        <div class="formula-box">
+          <div id="step1">
+            MSE(a) = [(y₁−ax₁)² + (y₂−ax₂)² + ··· + (yₙ−axₙ)²] / n
+          </div>
+          <div class="formula-step" id="step2">
+            = (Σxᵢ²/n)·a² − 2(Σxᵢyᵢ/n)·a + Σyᵢ²/n
+          </div>
+          <div class="formula-step" id="step3">
+            = <span id="coefA">—</span>·a² − <span id="coefB">—</span>·a + <span id="coefC">—</span>
+          </div>
+        </div>
+        <button class="btn btn-secondary" id="btnNextStep">다음 단계 →</button>
+      </div>
+
+      <div class="panel-section" id="minSection" style="display:none;">
+        <button class="btn btn-primary" id="btnFindMin">최솟값 찾기</button>
+        <div class="result-box" id="minBox">
+          <div class="result-row">
+            <span class="result-label">꼭짓점 공식</span>
+            <span style="font-size:0.76rem;font-family:monospace;">a* = B / (2A)</span>
+          </div>
+          <div class="result-row">
+            <span class="result-label">최적 a*</span>
+            <span class="result-val" id="minA">—</span>
+          </div>
+          <div class="result-row">
+            <span class="result-label">최솟값 MSE(a*)</span>
+            <span class="result-val" id="minMSE">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+  <script src="lesson3-script.js"></script>
+</body>
+</html>
