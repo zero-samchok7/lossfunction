@@ -167,7 +167,7 @@ function updateFormulaDisplay() {
     });
     var suffix = pts.length > 3 ? ' + ···' : '';
     var mseVal = mse(a);
-    return terms.join(' + ') + suffix + '\n÷ ' + pts.length + ' = <b>' + mseVal.toFixed(3) + '</b>';
+    return terms.join(' + ') + suffix + '<br>÷ ' + pts.length + ' = <b>' + mseVal.toFixed(3) + '</b>';
   }
   document.getElementById('formulaBox1').innerHTML = makeFormula(a1);
   document.getElementById('formulaBox2').innerHTML = makeFormula(a2);
