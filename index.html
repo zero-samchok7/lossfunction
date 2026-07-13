@@ -1,136 +1,115 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>예측과 최적화 단원 학습</title>
-    <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans KR', sans-serif;
-            background: #f0f4f8;
-            min-height: 100dvh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: #2d3748;
-            padding: 24px;
-        }
-
-        header {
-            text-align: center;
-            margin-bottom: 40px;
-        }
-        header h1 {
-            font-size: 1.6rem;
-            font-weight: 800;
-            color: #2d3748;
-            letter-spacing: -0.02em;
-        }
-
-        .cards {
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            flex-wrap: wrap;
-            width: 100%;
-            max-width: 760px;
-        }
-
-        .card {
-            background: #fff;
-            border-radius: 18px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-            padding: 32px 28px 28px;
-            flex: 1;
-            min-width: 260px;
-            max-width: 340px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            gap: 12px;
-            text-decoration: none;
-            color: inherit;
-            transition: transform 0.15s, box-shadow 0.15s;
-            cursor: pointer;
-        }
-        .card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 24px rgba(0,0,0,0.12);
-        }
-
-        .card-icon {
-            font-size: 2.8rem;
-            line-height: 1;
-        }
-
-        .card-title {
-            font-size: 1.15rem;
-            font-weight: 800;
-            color: #2d3748;
-        }
-
-        .card-desc {
-            font-size: 0.85rem;
-            color: #718096;
-            line-height: 1.6;
-        }
-
-        .card-btn {
-            margin-top: 8px;
-            padding: 9px 28px;
-            border-radius: 10px;
-            font-size: 0.88rem;
-            font-weight: 700;
-            border: none;
-            cursor: pointer;
-            transition: background 0.15s;
-        }
-
-        .card-trendline .card-btn {
-            background: #667eea;
-            color: #fff;
-        }
-        .card-trendline .card-btn:hover { background: #5a67d8; }
-
-        .card-gradient .card-btn {
-            background: #48bb78;
-            color: #fff;
-        }
-        .card-gradient .card-btn:hover { background: #38a169; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>예측과 최적화 단원 학습</title>
+  <link rel="stylesheet" href="lesson-common.css">
+  <style>
+    .hub-body {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      overflow: auto;
+    }
+    .hub-grid {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 960px;
+    }
+    .lesson-card {
+      background: var(--panel-bg);
+      border: 1.5px solid var(--border);
+      border-radius: 16px;
+      padding: 24px 16px 20px;
+      width: 160px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      color: var(--text);
+      transition: box-shadow 0.18s, border-color 0.18s;
+    }
+    .lesson-card:hover {
+      border-color: var(--accent);
+      box-shadow: 0 4px 20px rgba(108,92,231,0.18);
+    }
+    .lesson-card.disabled {
+      opacity: 0.4;
+      pointer-events: none;
+    }
+    .card-num {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+    }
+    .card-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.45;
+    }
+    .card-desc {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-align: center;
+      line-height: 1.55;
+      flex: 1;
+    }
+    .card-btn {
+      margin-top: 6px;
+      padding: 5px 20px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+  </style>
 </head>
 <body>
-
-<header>
-    <h1>예측과 최적화 단원 학습</h1>
-</header>
-
-<div class="cards">
-
-    <a class="card card-trendline" href="trendline.html">
-        <div class="card-icon">📈</div>
-        <div class="card-title">추세선 탐구</div>
-        <div class="card-desc">
-            직접 직선을 그려 MSE를 비교하며<br>
-            최적의 추세선을 탐구합니다.
-        </div>
-        <button class="card-btn">열기</button>
-    </a>
-
-    <a class="card card-gradient" href="gradient.html">
-        <div class="card-icon">📉</div>
-        <div class="card-title">경사하강법 탐구</div>
-        <div class="card-desc">
-            단계별로 기울기를 따라 내려가며<br>
-            최적값을 찾는 과정을 탐구합니다.
-        </div>
-        <button class="card-btn">열기</button>
-    </a>
-
-</div>
-
+  <header class="lesson-header">
+    <span class="lesson-title">예측과 최적화 단원 학습</span>
+  </header>
+  <main class="hub-body">
+    <div class="hub-grid">
+      <a href="lesson1.html" class="lesson-card">
+        <span class="card-num">1차시</span>
+        <span class="card-title">추세선 직접 그리기</span>
+        <span class="card-desc">직선을 그려 예측값과 오차를 확인합니다</span>
+        <span class="card-btn">열기</span>
+      </a>
+      <a href="lesson2.html" class="lesson-card">
+        <span class="card-num">2차시</span>
+        <span class="card-title">y=ax 직선 비교</span>
+        <span class="card-desc">두 직선의 평균제곱오차를 비교합니다</span>
+        <span class="card-btn">열기</span>
+      </a>
+      <a href="lesson3.html" class="lesson-card">
+        <span class="card-num">3차시</span>
+        <span class="card-title">손실함수와 최솟값</span>
+        <span class="card-desc">MSE 그래프에서 이차함수의 최솟값을 탐구합니다</span>
+        <span class="card-btn">열기</span>
+      </a>
+      <a href="lesson4.html" class="lesson-card disabled">
+        <span class="card-num">4차시</span>
+        <span class="card-title">준비 중</span>
+        <span class="card-desc">—</span>
+        <span class="card-btn">열기</span>
+      </a>
+      <a href="lesson5.html" class="lesson-card">
+        <span class="card-num">5차시</span>
+        <span class="card-title">경사하강법</span>
+        <span class="card-desc">경사를 따라 최솟값을 찾아가는 과정을 탐구합니다</span>
+        <span class="card-btn">열기</span>
+      </a>
+    </div>
+  </main>
 </body>
 </html>
