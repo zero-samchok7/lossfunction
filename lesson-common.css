@@ -15,7 +15,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 14px;
+  font-size: 15px;
   background: var(--bg);
   color: var(--text);
   height: 100dvh;
@@ -38,12 +38,16 @@ body {
 .back-link {
   position: absolute;
   left: 14px;
-  font-size: 0.82rem;
-  color: var(--text-muted);
-  text-decoration: none;
+  padding: 5px 14px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 8px;
+  font-size: 0.85rem;
   font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s;
 }
-.back-link:hover { color: var(--accent); }
+.back-link:hover { background: var(--accent-dark); color: #fff; }
 .lesson-title {
   font-size: 1rem;
   font-weight: 700;
@@ -55,15 +59,17 @@ body {
   display: flex;
   flex: 1;
   overflow: hidden;
+  position: relative;
+  padding-right: 264px;
 }
 .panel-left {
-  width: 220px;
+  width: 240px;
   flex-shrink: 0;
   background: var(--panel-bg);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  overflow: hidden;
   padding: 12px;
   gap: 10px;
 }
@@ -74,8 +80,11 @@ body {
   overflow: hidden;
 }
 .panel-right {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
   width: 264px;
-  flex-shrink: 0;
   background: var(--panel-bg);
   border-left: 1px solid var(--border);
   display: flex;
@@ -83,6 +92,11 @@ body {
   overflow-y: auto;
   padding: 12px;
   gap: 10px;
+  transition: transform 0.2s ease;
+  z-index: 10;
+}
+.panel-right.hidden {
+  transform: translateX(264px);
 }
 
 /* ===== 패널 섹션 ===== */
@@ -92,7 +106,7 @@ body {
   gap: 6px;
 }
 .section-label {
-  font-size: 0.7rem;
+  font-size: 0.78rem;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -104,7 +118,7 @@ body {
   padding: 6px 12px;
   border: none;
   border-radius: 8px;
-  font-size: 0.82rem;
+  font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s;
@@ -123,7 +137,7 @@ body {
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.82rem;
+  font-size: 0.87rem;
 }
 .data-table th {
   background: var(--bg);
@@ -142,7 +156,7 @@ body {
   border: none;
   background: transparent;
   text-align: center;
-  font-size: 0.82rem;
+  font-size: 0.87rem;
   color: var(--text);
   outline: none;
   padding: 2px 0;
@@ -155,10 +169,10 @@ body {
   align-items: center;
   gap: 8px;
 }
-.slider-row label { font-size: 0.82rem; min-width: 24px; font-weight: 600; }
+.slider-row label { font-size: 0.88rem; min-width: 24px; font-weight: 600; }
 .slider-row input[type=range] { flex: 1; accent-color: var(--accent); cursor: pointer; }
 .slider-val {
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   font-weight: 700;
   min-width: 40px;
   text-align: right;
@@ -171,20 +185,20 @@ body {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 8px 10px;
-  font-size: 0.76rem;
-  line-height: 1.7;
+  font-size: 0.87rem;
+  line-height: 1.8;
   font-family: 'Courier New', monospace;
   color: var(--text);
-  word-break: break-all;
+  word-break: break-word;
 }
 .formula-step {
   display: none;
   margin-top: 4px;
   padding-top: 4px;
   border-top: 1px dashed var(--border);
-  font-size: 0.76rem;
+  font-size: 0.87rem;
   font-family: 'Courier New', monospace;
-  line-height: 1.7;
+  line-height: 1.8;
 }
 .formula-step.visible { display: block; }
 .formula-highlight { color: var(--accent); font-weight: 700; }
@@ -196,7 +210,7 @@ body {
   border: 1px solid #c5b8ff;
   border-radius: 8px;
   padding: 8px 10px;
-  font-size: 0.82rem;
+  font-size: 0.87rem;
   gap: 4px;
   flex-direction: column;
 }

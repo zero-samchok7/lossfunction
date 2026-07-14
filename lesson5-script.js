@@ -7,9 +7,6 @@ const MAX_ROWS = 20;
 let rowCount = 10;
 let tableData = Array.from({length: rowCount}, () => ({x: '', y: ''}));
 let dataPts = [];
-let corrPts = [];
-let xbar = 0, ybar = 0;
-let viewMode = 'original'; // 'original' | 'corrected'
 
 // GD state
 let gdA0 = 0;
@@ -23,17 +20,6 @@ let gdTimer = null;
 /* ═══════════════════════════════
    MATH
 ═══════════════════════════════ */
-function calcCentroid(pts) {
-    const n = pts.length;
-    return {
-        x: pts.reduce((s, p) => s + p.x, 0) / n,
-        y: pts.reduce((s, p) => s + p.y, 0) / n
-    };
-}
-
-function correctData(pts, cx, cy) {
-    return pts.map(p => ({x: p.x - cx, y: p.y - cy}));
-}
 
 function mse(a, pts) {
     if (!pts.length) return NaN;
@@ -70,8 +56,8 @@ function gdReset() {
     gdStop();
     gdHistory = [];
     gdCurrentStep = 0;
-    if (corrPts.length >= 2) {
-        gdHistory.push({a: gdA0, mse: mse(gdA0, corrPts), grad: gradient(gdA0, corrPts)});
+    if (dataPts.length >= 2) {
+        gdHistory.push({a: gdA0, mse: mse(gdA0, dataPts), grad: gradient(gdA0, dataPts)});
         computeAllSteps();
     }
     updateGdControls();
@@ -84,10 +70,10 @@ function gdReset() {
 function computeAllSteps() {
     let a = gdA0;
     for (let i = 0; i < gdN; i++) {
-        const g = gradient(a, corrPts);
+        const g = gradient(a, dataPts);
         a = a - gdAlpha * g;
-        const newGrad = gradient(a, corrPts);
-        gdHistory.push({a, mse: mse(a, corrPts), grad: newGrad});
+        const newGrad = gradient(a, dataPts);
+        gdHistory.push({a, mse: mse(a, dataPts), grad: newGrad});
         if (Math.abs(newGrad) < 0.001) break;
     }
 }
@@ -108,7 +94,7 @@ function gdStop() {
 }
 
 function gdPlay() {
-    if (gdRunning || corrPts.length < 2 || gdHistory.length === 0) return;
+    if (gdRunning || dataPts.length < 2 || gdHistory.length === 0) return;
     if (gdCurrentStep >= gdHistory.length - 1) gdCurrentStep = 0;
     gdRunning = true;
     updateGdControls();
@@ -125,7 +111,7 @@ function gdPlay() {
 function gdPause() { gdStop(); updateGdControls(); }
 
 function updateGdControls() {
-    const has = corrPts.length >= 2 && gdHistory.length > 0;
+    const has = dataPts.length >= 2 && gdHistory.length > 0;
     document.getElementById('btnPlay').disabled    = !has || gdRunning;
     document.getElementById('btnPause').disabled   = !gdRunning;
     document.getElementById('btnGdReset').disabled = !has;
@@ -142,7 +128,7 @@ function updateStepSlider() {
 }
 
 function updateRight() {
-    if (gdHistory.length === 0 || corrPts.length < 2) {
+    if (gdHistory.length === 0 || dataPts.length < 2) {
         document.getElementById('formulaVals').textContent = '—';
         ['statStep','statA','statMse','statGrad'].forEach(id =>
             document.getElementById(id).textContent = '—');
@@ -192,7 +178,7 @@ function updateRight() {
 ═══════════════════════════════ */
 const midCvs = document.getElementById('midCvs');
 const midCtx = midCvs.getContext('2d');
-const MPAD = {top: 22, right: 18, bottom: 44, left: 56};
+const MPAD = {top: 30, right: 28, bottom: 52, left: 64};
 let MW = 0, MH = 0;
 let midVP = {aMin: -3, aMax: 3, mseMin: 0, mseMax: 10, ta: 1, tm: 2};
 
@@ -211,18 +197,20 @@ function mDatA(cx){ return midVP.aMin + (cx - MPAD.left) / mPW() * (midVP.aMax -
 
 function calcMidVP(aOpt, a0start, pts) {
     const spread = Math.max(Math.abs(aOpt - a0start) * 1.4, Math.abs(aOpt) * 0.8, 2.5);
-    const aLo = aOpt - spread, aHi = aOpt + spread;
+    const aHi = Math.max(aOpt + spread, a0start + 0.5, 1);
     let mseMax = 0;
     for (let i = 0; i <= 80; i++) {
-        const a = aLo + (aHi - aLo) * i / 80;
+        const a = aHi * i / 80;
         const m = mse(a, pts);
         if (!isNaN(m)) mseMax = Math.max(mseMax, m);
     }
+    const m0 = mse(0, pts);
+    if (!isNaN(m0)) mseMax = Math.max(mseMax, m0);
     mseMax = (mseMax || 10) * 1.2;
-    const ta = niceStep((aHi - aLo) / 5);
+    const ta = niceStep(aHi / 5);
     const tm = niceStep(mseMax / 4);
     return {
-        aMin: Math.floor(aLo / ta) * ta,
+        aMin: 0,
         aMax: Math.ceil(aHi / ta) * ta,
         mseMin: 0,
         mseMax: Math.ceil(mseMax / tm) * tm,
@@ -234,12 +222,12 @@ function redrawMid() {
     if (!MW || !MH) return;
     midCtx.clearRect(0, 0, MW, MH);
     const hint = document.getElementById('midHint');
-    if (corrPts.length < 2) { hint.style.display = ''; return; }
+    if (dataPts.length < 2) { hint.style.display = ''; return; }
     hint.style.display = 'none';
 
-    const aOpt = optimalA(corrPts);
+    const aOpt = optimalA(dataPts);
     const a0ref = gdHistory.length > 0 ? gdHistory[0].a : gdA0;
-    midVP = calcMidVP(aOpt, a0ref, corrPts);
+    midVP = calcMidVP(aOpt, a0ref, dataPts);
 
     // Grid
     midCtx.save(); midCtx.strokeStyle = '#edf2f7'; midCtx.lineWidth = 1;
@@ -258,8 +246,8 @@ function redrawMid() {
     midCtx.beginPath(); midCtx.moveTo(MPAD.left, mCY(0)); midCtx.lineTo(MW - MPAD.right, mCY(0)); midCtx.stroke();
     const axX = (midVP.aMin <= 0 && midVP.aMax >= 0) ? mCX(0) : MPAD.left;
     midCtx.beginPath(); midCtx.moveTo(axX, MPAD.top); midCtx.lineTo(axX, MH - MPAD.bottom); midCtx.stroke();
-    const fs = Math.max(9, MW * 0.02);
-    midCtx.font = `${fs}px sans-serif`; midCtx.fillStyle = '#a0aec0';
+    const fs = Math.max(11, MW * 0.022);
+    midCtx.font = `bold ${fs}px sans-serif`; midCtx.fillStyle = '#4a5568';
     midCtx.textAlign = 'center'; midCtx.textBaseline = 'top';
     for (let a = Math.ceil(midVP.aMin / midVP.ta) * midVP.ta; a <= midVP.aMax + 1e-9; a += midVP.ta)
         midCtx.fillText(Math.round(a * 1e9) / 1e9, mCX(Math.round(a * 1e9) / 1e9), MH - MPAD.bottom + 4);
@@ -280,7 +268,7 @@ function redrawMid() {
     let started = false;
     for (let i = 0; i <= 300; i++) {
         const a = midVP.aMin + (midVP.aMax - midVP.aMin) * i / 300;
-        const m = mse(a, corrPts);
+        const m = mse(a, dataPts);
         if (isNaN(m) || m > midVP.mseMax * 1.05) { started = false; continue; }
         const cx = mCX(a), cy = mCY(m);
         if (!started) { midCtx.moveTo(cx, cy); started = true; } else { midCtx.lineTo(cx, cy); }
@@ -288,7 +276,7 @@ function redrawMid() {
     midCtx.stroke(); midCtx.restore();
 
     // Minimum ★ + vertical guide line + a* label
-    const mOpt = mse(aOpt, corrPts);
+    const mOpt = mse(aOpt, dataPts);
     if (mOpt <= midVP.mseMax) {
         midCtx.save();
         // Vertical dashed line from ★ to x-axis
@@ -360,7 +348,7 @@ function redrawMid() {
 }
 
 midCvs.addEventListener('click', e => {
-    if (corrPts.length < 2) return;
+    if (dataPts.length < 2) return;
     const rect = midCvs.getBoundingClientRect();
     const cx = (e.clientX - rect.left) * (MW / rect.width);
     const cy = (e.clientY - rect.top)  * (MH / rect.height);
@@ -375,7 +363,7 @@ midCvs.addEventListener('click', e => {
 ═══════════════════════════════ */
 const leftCvs = document.getElementById('leftCvs');
 const leftCtx = leftCvs.getContext('2d');
-const LPAD = {top: 18, right: 10, bottom: 36, left: 44};
+const LPAD = {top: 22, right: 16, bottom: 42, left: 52};
 let LW = 0, LH = 0;
 let leftVP = {xMin: -5, xMax: 5, yMin: -5, yMax: 5, tx: 2, ty: 2};
 
@@ -407,7 +395,7 @@ function lCY(y) { return LPAD.top  + (1 - (y - leftVP.yMin) / (leftVP.yMax - lef
 
 function redrawLeft() {
     if (!LW || !LH) return;
-    const pts = viewMode === 'corrected' ? corrPts : dataPts;
+    const pts = dataPts;
     leftVP = calcVP(pts.length >= 2 ? pts : [{x: -5, y: -5}, {x: 5, y: 5}]);
     leftCtx.clearRect(0, 0, LW, LH);
 
@@ -429,8 +417,8 @@ function redrawLeft() {
     const ax = (leftVP.xMin <= 0 && leftVP.xMax >= 0) ? lCX(0) : LPAD.left;
     leftCtx.beginPath(); leftCtx.moveTo(LPAD.left, ay); leftCtx.lineTo(LW - LPAD.right, ay); leftCtx.stroke();
     leftCtx.beginPath(); leftCtx.moveTo(ax, LPAD.top); leftCtx.lineTo(ax, LH - LPAD.bottom); leftCtx.stroke();
-    const fs = Math.max(9, LW * 0.03);
-    leftCtx.font = `${fs}px sans-serif`; leftCtx.fillStyle = '#a0aec0';
+    const fs = Math.max(11, LW * 0.032);
+    leftCtx.font = `bold ${fs}px sans-serif`; leftCtx.fillStyle = '#4a5568';
     leftCtx.textAlign = 'center'; leftCtx.textBaseline = 'top';
     for (let x = Math.ceil(leftVP.xMin / leftVP.tx) * leftVP.tx; x <= leftVP.xMax + 1e-9; x += leftVP.tx)
         leftCtx.fillText(Math.round(x * 1e9) / 1e9, lCX(Math.round(x * 1e9) / 1e9), LH - LPAD.bottom + 3);
@@ -451,35 +439,11 @@ function redrawLeft() {
             leftCtx.lineWidth = lw;
             leftCtx.setLineDash([]);
             leftCtx.beginPath();
-            if (viewMode === 'corrected') {
-                leftCtx.moveTo(lCX(leftVP.xMin), lCY(a * leftVP.xMin));
-                leftCtx.lineTo(lCX(leftVP.xMax), lCY(a * leftVP.xMax));
-            } else {
-                leftCtx.moveTo(lCX(leftVP.xMin), lCY(a * (leftVP.xMin - xbar) + ybar));
-                leftCtx.lineTo(lCX(leftVP.xMax), lCY(a * (leftVP.xMax - xbar) + ybar));
-            }
+            leftCtx.moveTo(lCX(leftVP.xMin), lCY(a * leftVP.xMin));
+            leftCtx.lineTo(lCX(leftVP.xMax), lCY(a * leftVP.xMax));
             leftCtx.stroke();
             leftCtx.restore();
         }
-    }
-
-    // Centroid marker (오렌지 십자)
-    if (dataPts.length >= 2) {
-        const cx = viewMode === 'corrected' ? 0 : xbar;
-        const cy = viewMode === 'corrected' ? 0 : ybar;
-        const px = lCX(cx), py = lCY(cy), sz = 7;
-        leftCtx.save(); leftCtx.strokeStyle = '#ed8936'; leftCtx.lineWidth = 1.8;
-        leftCtx.beginPath(); leftCtx.moveTo(px - sz, py); leftCtx.lineTo(px + sz, py); leftCtx.stroke();
-        leftCtx.beginPath(); leftCtx.moveTo(px, py - sz); leftCtx.lineTo(px, py + sz); leftCtx.stroke();
-        if (viewMode === 'corrected') {
-            const lfs = Math.max(9, LW * 0.03);
-            leftCtx.fillStyle = '#ed8936';
-            leftCtx.font = `${lfs}px sans-serif`;
-            leftCtx.textAlign = 'left';
-            leftCtx.textBaseline = 'bottom';
-            leftCtx.fillText(`(x̄=${fmtN(xbar,2)}, ȳ=${fmtN(ybar,2)})`, px + 9, py - 4);
-        }
-        leftCtx.restore();
     }
 
     // Data points
@@ -490,23 +454,6 @@ function redrawLeft() {
         leftCtx.strokeStyle = '#fff'; leftCtx.lineWidth = 1.5; leftCtx.stroke();
     }
 
-    // Equation + MSE label
-    const eqEl = document.getElementById('leftEq');
-    const mseEl = document.getElementById('leftMse');
-    if (curA === null || corrPts.length < 2) {
-        eqEl.className = 'eq-ph';
-        eqEl.textContent = dataPts.length >= 2 ? '보정 보기로 전환하세요' : '데이터를 입력하세요';
-        mseEl.textContent = '—';
-    } else {
-        eqEl.className = 'eq-blue';
-        if (viewMode === 'corrected') {
-            eqEl.textContent = `y = ${fmtN(curA, 3)}x`;
-        } else {
-            const b = ybar - curA * xbar;
-            eqEl.textContent = `y = ${fmtN(curA, 3)}x ${b >= 0 ? '+' : '−'} ${fmtN(Math.abs(b), 3)}`;
-        }
-        mseEl.textContent = fmtN(mse(curA, corrPts), 4);
-    }
 }
 
 /* ═══════════════════════════════
@@ -524,18 +471,8 @@ function createRowEl(i) {
     tr.innerHTML = `
         <td class="rn">${i + 1}</td>
         <td class="ci"><input type="number" step="any" placeholder="−" data-r="${i}" data-c="x"></td>
-        <td class="ci"><input type="number" step="any" placeholder="−" data-r="${i}" data-c="y"></td>
-        <td><button class="btn-del" data-r="${i}">×</button></td>`;
+        <td class="ci"><input type="number" step="any" placeholder="−" data-r="${i}" data-c="y"></td>`;
     tr.querySelectorAll('input').forEach(inp => inp.addEventListener('input', onCellInput));
-    tr.querySelector('.btn-del').addEventListener('click', e => {
-        const r = +e.currentTarget.dataset.r;
-        tableData[r] = {x: '', y: ''};
-        ['x', 'y'].forEach(c => {
-            const el = document.querySelector(`input[data-r="${r}"][data-c="${c}"]`);
-            if (el) { el.value = ''; el.classList.remove('has-val'); }
-        });
-        onDataChange();
-    });
     return tr;
 }
 
@@ -585,7 +522,7 @@ function generateSample() {
     // y ≈ slope*x (원점 근처 통과, 양수 범위)
     var slope = 0.6 + Math.random() * 1.8;
     var data = [];
-    for (var i = 0; i < 8; i++) {
+    for (var i = 0; i < 10; i++) {
         var x = Math.round((2 + Math.random() * 14) * 10) / 10;
         var noise = (Math.random() - 0.5) * slope * x * 0.5;
         var y = Math.round(Math.min(20, Math.max(0.2, slope * x + noise)) * 10) / 10;
@@ -606,14 +543,12 @@ function loadSampleData() {
         if (xEl) { xEl.value = pt.x; xEl.classList.add('has-val'); }
         if (yEl) { yEl.value = pt.y; yEl.classList.add('has-val'); }
     });
-    viewMode = 'original';
     onDataChange();
 }
 
 function resetData() {
     tableData = Array.from({length: 10}, () => ({x: '', y: ''}));
     rowCount = 10;
-    viewMode = 'original';
     buildTable();
     onDataChange();
 }
@@ -625,19 +560,6 @@ function onDataChange() {
     dataPts = tableData
         .filter(r => r.x !== '' && r.y !== '' && !isNaN(+r.x) && !isNaN(+r.y))
         .map(r => ({x: +r.x, y: +r.y}));
-
-    if (dataPts.length >= 2) {
-        const c = calcCentroid(dataPts);
-        xbar = c.x; ybar = c.y;
-        corrPts = correctData(dataPts, xbar, ybar);
-    } else {
-        xbar = 0; ybar = 0; corrPts = [];
-    }
-
-    const toggleBtn = document.getElementById('btnToggleView');
-    toggleBtn.disabled = dataPts.length < 2;
-    toggleBtn.textContent = viewMode === 'original' ? '보정 보기' : '원본 보기';
-    toggleBtn.classList.toggle('corrected', viewMode === 'corrected');
 
     gdReset();
 }
@@ -651,7 +573,7 @@ document.getElementById('a0Input').addEventListener('input', e => {
 });
 document.getElementById('alphaSlider').addEventListener('input', e => {
     gdAlpha = +e.target.value;
-    document.getElementById('alphaDisplay').textContent = gdAlpha.toFixed(2);
+    document.getElementById('alphaDisplay').textContent = gdAlpha.toFixed(3);
     gdReset();
 });
 document.getElementById('nSlider').addEventListener('input', e => {
@@ -674,15 +596,6 @@ document.getElementById('btnGdReset').addEventListener('click', gdReset);
 ═══════════════════════════════ */
 document.getElementById('btnSample').addEventListener('click', loadSampleData);
 document.getElementById('btnReset').addEventListener('click', resetData);
-document.getElementById('btnToggleView').addEventListener('click', () => {
-    if (dataPts.length < 2) return;
-    viewMode = viewMode === 'original' ? 'corrected' : 'original';
-    const btn = document.getElementById('btnToggleView');
-    btn.textContent = viewMode === 'original' ? '보정 보기' : '원본 보기';
-    btn.classList.toggle('corrected', viewMode === 'corrected');
-    redrawLeft();
-    redrawMid();
-});
 
 window.addEventListener('resize', () => { resizeLeft(); resizeMid(); });
 

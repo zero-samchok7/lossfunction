@@ -4,11 +4,11 @@ var a1 = 1.0, a2 = 2.0;
 var showOptimal = false;
 
 /* ===== 샘플 생성 ===== */
-// y ≈ slope*x (0~20 범위, 원점 근처)
+// y ≈ slope*x (0~30 범위, 원점 근처)
 function generateSample() {
   var slope = 0.5 + Math.random() * 2.0;
   var result = [];
-  for (var i = 0; i < 8; i++) {
+  for (var i = 0; i < 10; i++) {
     var x = Math.round((2 + Math.random() * 14) * 10) / 10;
     var noise = (Math.random() - 0.5) * slope * x * 0.5;
     var y = Math.round(Math.min(20, Math.max(0.1, slope * x + noise)) * 10) / 10;
@@ -31,10 +31,11 @@ function optimalA() {
   return sumX2 === 0 ? 0 : sumXY / sumX2;
 }
 
-/* ===== 캔버스 그리기 (고정 0~20 범위) ===== */
+/* ===== 캔버스 그리기 (고정 0~30 범위) ===== */
 var canvas = document.getElementById('mainCanvas');
 var ctx = canvas.getContext('2d');
-var MARGIN = {top: 24, right: 24, bottom: 44, left: 48};
+var MARGIN = {top: 30, right: 44, bottom: 52, left: 56};
+var rightOpen = false;
 
 function resize() {
   canvas.width = canvas.offsetWidth;
@@ -47,8 +48,8 @@ function toPixel(x, y) {
   var w = canvas.width - MARGIN.left - MARGIN.right;
   var h = canvas.height - MARGIN.top - MARGIN.bottom;
   return {
-    px: MARGIN.left + x / 20 * w,
-    py: MARGIN.top + (1 - y / 20) * h
+    px: MARGIN.left + x / 30 * w,
+    py: MARGIN.top + (1 - y / 30) * h
   };
 }
 
@@ -83,7 +84,7 @@ function redraw() {
 function drawGrid() {
   ctx.strokeStyle = '#e2e8f0';
   ctx.lineWidth = 1;
-  for (var v = 0; v <= 20; v += 5) {
+  for (var v = 0; v <= 30; v += 5) {
     var vp = toPixel(v, 0), hp = toPixel(0, v);
     ctx.beginPath();
     ctx.moveTo(vp.px, MARGIN.top);
@@ -93,28 +94,28 @@ function drawGrid() {
     ctx.moveTo(MARGIN.left, hp.py);
     ctx.lineTo(canvas.width - MARGIN.right, hp.py);
     ctx.stroke();
-    ctx.fillStyle = '#718096';
-    ctx.font = '11px sans-serif';
+    ctx.fillStyle = '#4a5568';
+    ctx.font = 'bold 13px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(v, vp.px, canvas.height - MARGIN.bottom + 14);
+    ctx.fillText(v, vp.px, canvas.height - MARGIN.bottom + 16);
     ctx.textAlign = 'right';
-    ctx.fillText(v, MARGIN.left - 5, hp.py + 4);
+    ctx.fillText(v, MARGIN.left - 8, hp.py + 4);
   }
 }
 
 function drawAxLine(a, color, label) {
   // y = a*x는 (0,0)에서 시작 — 범위 내로 클리핑
-  // a가 크면 y=20일 때 x=20/a에서 끝남, a가 작으면 x=20일 때 y=20a에서 끝남
+  // a가 크면 y=30일 때 x=30/a에서 끝남, a가 작으면 x=30일 때 y=30a에서 끝남
   var xEnd, yEnd;
   if (a <= 0) {
-    xEnd = 20;
+    xEnd = 30;
     yEnd = 0;
-  } else if (a * 20 <= 20) {
-    xEnd = 20;
-    yEnd = a * 20;
+  } else if (a * 30 <= 30) {
+    xEnd = 30;
+    yEnd = a * 30;
   } else {
-    xEnd = 20 / a;
-    yEnd = 20;
+    xEnd = 30 / a;
+    yEnd = 30;
   }
   var p1 = toPixel(0, 0);
   var p2 = toPixel(xEnd, yEnd);
@@ -129,9 +130,13 @@ function drawAxLine(a, color, label) {
   var midY = Math.min(a * midX, 19);
   var mp = toPixel(midX, midY);
   ctx.fillStyle = color;
-  ctx.font = 'bold 12px Courier New, monospace';
+  ctx.font = 'bold 14px Courier New, monospace';
   ctx.textAlign = 'left';
-  ctx.fillText(label, mp.px + 4, mp.py - 5);
+  var labelW = ctx.measureText(label).width;
+  var lx = Math.min(mp.px + 4, canvas.width - MARGIN.right - labelW - 4);
+  lx = Math.max(MARGIN.left + 4, lx);
+  var ly = Math.max(mp.py - 6, MARGIN.top + 16);
+  ctx.fillText(label, lx, ly);
 }
 
 function drawResiduals(a, color) {
@@ -139,7 +144,7 @@ function drawResiduals(a, color) {
   ctx.strokeStyle = color + '88';
   ctx.lineWidth = 1;
   pts.forEach(function(p) {
-    var yhat = Math.min(a * p.x, 20);
+    var yhat = Math.min(a * p.x, 30);
     var top = toPixel(p.x, p.y);
     var bot = toPixel(p.x, yhat);
     ctx.beginPath();
@@ -216,52 +221,42 @@ document.getElementById('btnOptimal').addEventListener('click', function() {
 });
 
 /* ===== 데이터 테이블 관리 ===== */
-// lesson1과 동일 패턴, placeholder="0~20" 사용
 function updateTable() {
   var body = document.getElementById('dataBody');
   body.innerHTML = '';
   pts.forEach(function(p, i) {
     var tr = document.createElement('tr');
     tr.innerHTML = '<td style="text-align:center;color:var(--text-muted)">' + (i + 1) + '</td>'
-      + '<td><input type="number" value="' + p.x + '" step="0.1" min="0" max="20"></td>'
-      + '<td><input type="number" value="' + p.y + '" step="0.1" min="0" max="20"></td>';
+      + '<td><input type="number" value="' + p.x + '" step="0.1" min="0" max="30"></td>'
+      + '<td><input type="number" value="' + p.y + '" step="0.1" min="0" max="30"></td>';
     var inputs = tr.querySelectorAll('input');
     inputs[0].addEventListener('change', function() {
-      pts[i].x = +this.value;
-      redraw();
-      updateFormulaDisplay();
+      pts[i].x = +this.value; redraw(); updateFormulaDisplay();
     });
     inputs[1].addEventListener('change', function() {
-      pts[i].y = +this.value;
-      redraw();
-      updateFormulaDisplay();
+      pts[i].y = +this.value; redraw(); updateFormulaDisplay();
     });
     body.appendChild(tr);
   });
-  // 빈 행 추가 (데이터 입력용, 최대 15)
-  if (pts.length < 15) {
-    var tr = document.createElement('tr');
-    tr.innerHTML = '<td style="text-align:center;color:var(--text-muted)">' + (pts.length + 1) + '</td>'
-      + '<td><input type="number" placeholder="0~20" step="0.1" min="0" max="20"></td>'
-      + '<td><input type="number" placeholder="0~20" step="0.1" min="0" max="20"></td>';
-    var inputs = tr.querySelectorAll('input');
-    inputs[0].addEventListener('change', function() {
-      if (inputs[1].value !== '') {
-        pts.push({x: +inputs[0].value, y: +inputs[1].value});
-        updateTable();
-        redraw();
-        updateFormulaDisplay();
+  // 빈 입력 행: 최소 15개가 될 때까지, 이후에는 항상 1개 (무제한 추가 가능)
+  var blankCount = Math.max(1, 15 - pts.length);
+  for (var b = 0; b < blankCount; b++) {
+    (function(rowIdx) {
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td style="text-align:center;color:var(--text-muted)">' + (rowIdx + 1) + '</td>'
+        + '<td><input type="number" step="0.1" min="0" max="30"></td>'
+        + '<td><input type="number" step="0.1" min="0" max="30"></td>';
+      var inputs = tr.querySelectorAll('input');
+      function tryAdd() {
+        if (inputs[0].value !== '' && inputs[1].value !== '') {
+          pts.push({x: +inputs[0].value, y: +inputs[1].value});
+          updateTable(); redraw(); updateFormulaDisplay();
+        }
       }
-    });
-    inputs[1].addEventListener('change', function() {
-      if (inputs[0].value !== '') {
-        pts.push({x: +inputs[0].value, y: +inputs[1].value});
-        updateTable();
-        redraw();
-        updateFormulaDisplay();
-      }
-    });
-    body.appendChild(tr);
+      inputs[0].addEventListener('change', tryAdd);
+      inputs[1].addEventListener('change', tryAdd);
+      body.appendChild(tr);
+    })(pts.length + b);
   }
 }
 
@@ -283,6 +278,13 @@ document.getElementById('btnReset').addEventListener('click', function() {
   updateTable();
   redraw();
   updateFormulaDisplay();
+});
+
+/* ===== 우측 패널 토글 ===== */
+document.getElementById('toggleRight').addEventListener('click', function() {
+  rightOpen = !rightOpen;
+  document.getElementById('rightPanel').classList.toggle('hidden', !rightOpen);
+  this.textContent = rightOpen ? '◀ 손실함수' : '▶ 손실함수';
 });
 
 /* ===== 초기화 실행 ===== */

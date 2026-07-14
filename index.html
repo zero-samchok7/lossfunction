@@ -15,11 +15,9 @@
       overflow: auto;
     }
     .hub-grid {
-      display: flex;
+      display: grid;
+      grid-template-columns: repeat(3, 160px);
       gap: 16px;
-      flex-wrap: wrap;
-      justify-content: center;
-      max-width: 960px;
     }
     .lesson-card {
       background: var(--panel-bg);
@@ -44,10 +42,11 @@
       pointer-events: none;
     }
     .card-num {
-      font-size: 0.7rem;
-      font-weight: 700;
-      color: var(--text-muted);
-      letter-spacing: 0.08em;
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--accent);
+      letter-spacing: -0.01em;
+      line-height: 1;
     }
     .card-title {
       font-size: 0.88rem;
@@ -62,15 +61,6 @@
       line-height: 1.55;
       flex: 1;
     }
-    .card-btn {
-      margin-top: 6px;
-      padding: 5px 20px;
-      background: var(--accent);
-      color: #fff;
-      border-radius: 20px;
-      font-size: 0.78rem;
-      font-weight: 700;
-    }
   </style>
 </head>
 <body>
@@ -83,31 +73,35 @@
         <span class="card-num">1차시</span>
         <span class="card-title">추세선 직접 그리기</span>
         <span class="card-desc">직선을 그려 예측값과 오차를 확인합니다</span>
-        <span class="card-btn">열기</span>
+
       </a>
       <a href="lesson2.html" class="lesson-card">
         <span class="card-num">2차시</span>
         <span class="card-title">y=ax 직선 비교</span>
         <span class="card-desc">두 직선의 평균제곱오차를 비교합니다</span>
-        <span class="card-btn">열기</span>
+
       </a>
       <a href="lesson3.html" class="lesson-card">
         <span class="card-num">3차시</span>
         <span class="card-title">손실함수와 최솟값</span>
         <span class="card-desc">MSE 그래프에서 이차함수의 최솟값을 탐구합니다</span>
-        <span class="card-btn">열기</span>
+
       </a>
-      <a href="lesson4.html" class="lesson-card disabled">
-        <span class="card-num">4차시</span>
-        <span class="card-title">준비 중</span>
-        <span class="card-desc">—</span>
-        <span class="card-btn">열기</span>
+      <a href="lesson4a.html" class="lesson-card">
+        <span class="card-num">4차시A</span>
+        <span class="card-title">손실함수의 이차곡면</span>
+        <span class="card-desc">y=ax+b의 MSE를 3D 포물면으로 탐구합니다</span>
+
+      </a>
+      <a href="lesson4b.html" class="lesson-card">
+        <span class="card-num">4차시B</span>
+        <span class="card-title">경사하강법</span>
+        <span class="card-desc">경사를 따라 최솟값을 찾아가는 과정을 탐구합니다</span>
+
       </a>
       <a href="lesson5.html" class="lesson-card">
         <span class="card-num">5차시</span>
-        <span class="card-title">경사하강법</span>
-        <span class="card-desc">경사를 따라 최솟값을 찾아가는 과정을 탐구합니다</span>
-        <span class="card-btn">열기</span>
+        <span class="card-title" style="font-size:1.5rem;margin:auto;">종합</span>
       </a>
     </div>
   </main>

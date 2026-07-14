@@ -15,16 +15,10 @@
     .legend-eq { font-family: 'Courier New', monospace; color: var(--text); }
     .legend-del { margin-left: auto; cursor: pointer; color: var(--text-muted); font-size: 0.7rem; }
     .legend-del:hover { color: #e53e3e; }
-    /* 우측 패널 슬라이드 토글 */
-    #rightPanel { transition: width 0.2s; }
-    #rightPanel.hidden { width: 0; padding: 0; overflow: hidden; border: none; }
     /* 오른쪽 펼침 버튼 */
     #toggleRight {
       position: absolute; top: 10px; right: 10px;
-      background: var(--panel-bg); border: 1px solid var(--border);
-      border-radius: 8px; padding: 4px 8px; cursor: pointer;
-      font-size: 0.78rem; font-weight: 700; color: var(--accent);
-      z-index: 10;
+      z-index: 5;
     }
     /* 예측/오차 테이블 숨김 열 */
     .col-pred, .col-err { display: none; }
@@ -66,7 +60,7 @@
         </div>
       </div>
       <!-- 펼침 버튼 -->
-      <button id="toggleRight">▶ 오차</button>
+      <button id="toggleRight" class="btn btn-secondary">▶ 오차</button>
     </div>
 
     <!-- 우측: 예측·오차 패널 -->
@@ -86,12 +80,59 @@
           <thead>
             <tr>
               <th>x</th><th>y</th>
-              <th class="col-pred">ŷ</th>
-              <th class="col-err">y−ŷ</th>
+              <th class="col-pred">예측값</th>
+              <th class="col-err">오차</th>
             </tr>
           </thead>
           <tbody id="predBody"></tbody>
         </table>
+      </div>
+      <div class="panel-section">
+        <div class="btn-row">
+          <button class="btn btn-secondary" id="btnShowStats">자료</button>
+        </div>
+        <div id="statsBox" style="display:none; margin-top:8px; flex-direction:column; gap:6px;">
+          <div class="result-box" style="display:flex;flex-direction:column;">
+            <div class="result-row">
+              <span class="result-label">오차의 합</span>
+              <span class="result-val" id="statSumErr">—</span>
+            </div>
+            <div class="result-row">
+              <span class="result-label">오차의 평균</span>
+              <span class="result-val" id="statMeanErr">—</span>
+            </div>
+          </div>
+          <div class="result-box" style="display:flex;flex-direction:column;">
+            <div class="result-row">
+              <span class="result-label">|오차|의 합</span>
+              <span class="result-val" id="statSumAbsErr">—</span>
+            </div>
+            <div class="result-row">
+              <span class="result-label">|오차|의 평균</span>
+              <span class="result-val" id="statMeanAbsErr">—</span>
+            </div>
+          </div>
+          <div class="result-box" style="display:flex;flex-direction:column;">
+            <div class="result-row">
+              <span class="result-label">√|오차|의 합</span>
+              <span class="result-val" id="statSumSqrtErr">—</span>
+            </div>
+            <div class="result-row">
+              <span class="result-label">√|오차|의 평균</span>
+              <span class="result-val" id="statMeanSqrtErr">—</span>
+            </div>
+          </div>
+          <div class="result-box" style="display:flex;flex-direction:column;">
+            <div class="result-row">
+              <span class="result-label">오차²의 합</span>
+              <span class="result-val" id="statSumSqErr">—</span>
+            </div>
+            <div class="result-row">
+              <span class="result-label">오차²의 평균</span>
+              <span class="result-val" id="statMeanSqErr">—</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
