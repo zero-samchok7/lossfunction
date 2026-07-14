@@ -168,11 +168,12 @@ function updateFormulaDisplay() {
   }
   function makeFormula(a) {
     var terms = pts.slice(0, 3).map(function(p) {
-      return '(' + p.y.toFixed(1) + '−' + a.toFixed(1) + '×' + p.x.toFixed(1) + ')²';
+      return '(' + p.y.toFixed(1) + '-' + a.toFixed(1) + '\\cdot ' + p.x.toFixed(1) + ')^2';
     });
-    var suffix = pts.length > 3 ? ' + ···' : '';
+    var suffix = pts.length > 3 ? '+\\cdots' : '';
     var mseVal = mse(a);
-    return terms.join(' + ') + suffix + '<br>÷ ' + pts.length + ' = <b>' + mseVal.toFixed(3) + '</b>';
+    var latex = '\\dfrac{' + terms.join('+') + suffix + '}{' + pts.length + '} = ' + mseVal.toFixed(3);
+    return katex.renderToString(latex, {throwOnError: false, displayMode: true});
   }
   document.getElementById('formulaBox1').innerHTML = makeFormula(a1);
   document.getElementById('formulaBox2').innerHTML = makeFormula(a2);

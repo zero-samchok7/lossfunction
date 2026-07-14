@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>1차시 — 추세선 직접 그리기</title>
   <link rel="stylesheet" href="lesson-common.css">
+  <link rel="stylesheet" href="lib/katex/katex.min.css">
   <style>
     .mode-toggle { display: flex; gap: 0; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
     .mode-toggle .btn { border-radius: 0; flex: 1; border: none; background: var(--bg); color: var(--text-muted); }
@@ -137,6 +138,9 @@
     </div>
 
   </main>
+  <script src="lib/katex/katex.min.js"></script>
   <script src="lesson1-script.js"></script>
+  <script src="lib/katex/contrib/auto-render.min.js"></script>
+  <script>renderMathInElement(document.body,{delimiters:[{left:"\\(",right:"\\)",display:false},{left:"\\[",right:"\\]",display:true}],throwOnError:false});</script>
 </body>
 </html>

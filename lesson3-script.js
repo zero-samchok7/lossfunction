@@ -4,6 +4,7 @@ var currentA = 1.0;
 var stepShown = 1;   // 1, 2, 3 (현재 보여진 단계)
 var animating = false;
 var rightOpen = false;
+var showMin = false;
 
 // MSE(a) 계산
 function mse(a) {
@@ -161,18 +162,22 @@ function redrawParabola() {
   pCtx.fillStyle = '#e53e3e'; pCtx.fill();
   pCtx.strokeStyle = '#fff'; pCtx.lineWidth = 2; pCtx.stroke();
 
-  // 최솟값 ★ 표시
-  var starP = tp(aStar, coeffs.mseStar);
-  pCtx.font = '18px sans-serif'; pCtx.fillStyle = '#f6ad55'; pCtx.textAlign = 'center';
-  pCtx.fillText('★', starP.px, starP.py - 4);
-  // a* 수직 점선
-  pCtx.setLineDash([4,4]); pCtx.strokeStyle = '#f6ad55'; pCtx.lineWidth = 1;
-  pCtx.beginPath(); pCtx.moveTo(starP.px, starP.py); pCtx.lineTo(starP.px, h-PM.bottom); pCtx.stroke();
-  pCtx.setLineDash([]);
-  // a* 레이블 (x축)
-  pCtx.fillStyle = '#fff'; pCtx.fillRect(starP.px-22, h-PM.bottom+2, 44, 18);
-  pCtx.fillStyle = '#f6ad55'; pCtx.font = 'bold 13px sans-serif'; pCtx.textAlign = 'center';
-  pCtx.fillText('a*='+aStar.toFixed(2), starP.px, h-PM.bottom+15);
+  // 최솟값 ★ 표시 (최솟값 찾기 버튼 누른 후에만)
+  if (showMin) {
+    var starP = tp(aStar, coeffs.mseStar);
+    pCtx.font = '18px sans-serif'; pCtx.fillStyle = '#f6ad55'; pCtx.textAlign = 'center';
+    pCtx.fillText('★', starP.px, starP.py - 4);
+    // a* 수직 점선
+    pCtx.setLineDash([4,4]); pCtx.strokeStyle = '#f6ad55'; pCtx.lineWidth = 1;
+    pCtx.beginPath(); pCtx.moveTo(starP.px, starP.py); pCtx.lineTo(starP.px, h-PM.bottom); pCtx.stroke();
+    pCtx.setLineDash([]);
+    // a* 레이블 (x축)
+    var label = 'a*=' + aStar.toFixed(2);
+    var lw = pCtx.measureText(label).width;
+    pCtx.fillStyle = '#fff'; pCtx.fillRect(starP.px - lw/2 - 3, h-PM.bottom+2, lw + 6, 18);
+    pCtx.fillStyle = '#f6ad55'; pCtx.font = 'bold 13px sans-serif'; pCtx.textAlign = 'center';
+    pCtx.fillText(label, starP.px, h-PM.bottom+15);
+  }
 }
 
 // 캔버스 클릭 → a 값 선택
@@ -217,9 +222,9 @@ document.getElementById('aSlider').addEventListener('input', function() {
 function updateCoeffDisplay() {
   if (pts.length < 2) return;
   var c = computeCoeffs();
-  document.getElementById('coefA').textContent = c.A.toFixed(4);
-  document.getElementById('coefB').textContent = c.B.toFixed(4);
-  document.getElementById('coefC').textContent = c.C.toFixed(4);
+  var A = c.A.toFixed(4), B = c.B.toFixed(4), C = c.C.toFixed(4);
+  var latex = '= \\textcolor{#6c5ce7}{' + A + '}\\,a^2 - \\textcolor{#6c5ce7}{' + B + '}\\,a + \\textcolor{#6c5ce7}{' + C + '}';
+  document.getElementById('step3').innerHTML = katex.renderToString(latex, {throwOnError: false, displayMode: true});
   // 슬라이더 범위 조정
   var aMax = Math.max(c.aStar * 2.5, 5);
   document.getElementById('aSlider').max = aMax.toFixed(1);
@@ -259,6 +264,7 @@ document.getElementById('btnFindMin').addEventListener('click', function() {
     if (step < steps) { requestAnimationFrame(animate); }
     else {
       currentA = aStar;
+      showMin = true;
       updateADisplay();
       animating = false;
       // 결과 표시
@@ -273,6 +279,7 @@ document.getElementById('btnFindMin').addEventListener('click', function() {
 // ===== 샘플 생성 + 데이터 테이블 =====
 function resetSteps() {
   stepShown = 1;
+  showMin = false;
   document.getElementById('step2').classList.remove('visible');
   document.getElementById('step3').classList.remove('visible');
   document.getElementById('btnNextStep').textContent = '다음 단계 →';

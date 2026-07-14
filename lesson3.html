@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>3차시 — 손실함수와 최솟값</title>
   <link rel="stylesheet" href="lesson-common.css">
+  <link rel="stylesheet" href="lib/katex/katex.min.css">
   <style>
     /* 좌측 패널: 산점도 캔버스 + 데이터 테이블 */
     #scatterCanvas { width: 100%; height: 180px; border-radius: 8px; border: 1px solid var(--border); }
@@ -12,6 +13,8 @@
     #parabolaCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
     /* a 슬라이더 값 색상 */
     #aVal { color: var(--accent); font-weight: 700; }
+    .formula-box { overflow-x: auto; }
+    .formula-box .katex-display { margin: 0.4em 0; }
   </style>
 </head>
 <body>
@@ -64,9 +67,9 @@
       <div class="panel-section">
         <span class="section-label">손실함수 전개</span>
         <div class="formula-box">
-          <div id="step1">MSE(a) =<br>&nbsp;(1/n) × [(y₁−ax₁)²<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ (y₂−ax₂)²<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ ··· + (yₙ−axₙ)²]</div>
-          <div class="formula-step" id="step2">= (Σxᵢ²/n)·a²<br>&nbsp;&nbsp;− 2(Σxᵢyᵢ/n)·a<br>&nbsp;&nbsp;+ Σyᵢ²/n</div>
-          <div class="formula-step" id="step3">= <span class="formula-highlight" id="coefA">—</span>·a²<br>&nbsp;&nbsp;− <span class="formula-highlight" id="coefB">—</span>·a<br>&nbsp;&nbsp;+ <span class="formula-highlight" id="coefC">—</span></div>
+          <div id="step1">\[\text{MSE}(a) = \frac{1}{n}\bigl[(y_1-ax_1)^2+(y_2-ax_2)^2+\cdots+(y_n-ax_n)^2\bigr]\]</div>
+          <div class="formula-step" id="step2">\[= \frac{\sum x_i^2}{n}\cdot a^2 - \frac{2\sum x_i y_i}{n}\cdot a + \frac{\sum y_i^2}{n}\]</div>
+          <div class="formula-step" id="step3">= <span class="formula-highlight" id="coefA">—</span>·a² − <span class="formula-highlight" id="coefB">—</span>·a + <span class="formula-highlight" id="coefC">—</span></div>
         </div>
         <button class="btn btn-secondary" id="btnNextStep">다음 단계 →</button>
       </div>
@@ -76,7 +79,7 @@
         <div class="result-box" id="minBox">
           <div class="result-row">
             <span class="result-label">꼭짓점 공식</span>
-            <span style="font-size:0.82rem;font-family:monospace;">a* = B / (2A)</span>
+            \(a^* = \dfrac{B}{2A}\)
           </div>
           <div class="result-row">
             <span class="result-label">최적 a*</span>
@@ -91,6 +94,9 @@
     </div>
 
   </main>
+  <script src="lib/katex/katex.min.js"></script>
   <script src="lesson3-script.js"></script>
+  <script src="lib/katex/contrib/auto-render.min.js"></script>
+  <script>renderMathInElement(document.body,{delimiters:[{left:"\\(",right:"\\)",display:false},{left:"\\[",right:"\\]",display:true}],throwOnError:false});</script>
 </body>
 </html>
