@@ -2,26 +2,26 @@
 
 /* ===== 함수 정의 ===== */
 var FUNCS = [
-    {
-        latex:    'f(x) = 2x^2 - 9x + 11',
-        vtxLatex: 'f(x) = 2\\left(x - \\dfrac{9}{4}\\right)^{2} + \\dfrac{7}{8}',
-        a: 2, b: -9, c: 11, x0def: 4.5
+    {   /* 꼭짓점 오른쪽 — 오른쪽 영역에 포물선 */
+        latex:    'f(x) = x^2 - 9x + 21',
+        vtxLatex: 'f(x) = \\left(x - \\dfrac{9}{2}\\right)^{2} + \\dfrac{3}{4}',
+        a: 1, b: -9, c: 21, x0def: -0.5
     },
-    {
-        latex:    'f(x) = 3x^2 - 7x + 6',
-        vtxLatex: 'f(x) = 3\\left(x - \\dfrac{7}{6}\\right)^{2} + \\dfrac{23}{12}',
-        a: 3, b: -7, c: 6, x0def: 3.5
+    {   /* 꼭짓점 중앙 — 중앙 영역에 포물선, 계수 2배라 빠른 수렴 */
+        latex:    'f(x) = 2x^2 + x + 2',
+        vtxLatex: 'f(x) = 2\\left(x + \\dfrac{1}{4}\\right)^{2} + \\dfrac{15}{8}',
+        a: 2, b: 1, c: 2, x0def: 3.4
     },
-    {
-        latex:    'f(x) = x^2 + 5x + 9',
-        vtxLatex: 'f(x) = \\left(x + \\dfrac{5}{2}\\right)^{2} + \\dfrac{11}{4}',
-        a: 1, b: 5, c: 9, x0def: 1.5
+    {   /* 꼭짓점 왼쪽 — 왼쪽 영역에 포물선 */
+        latex:    'f(x) = x^2 + 9x + 21',
+        vtxLatex: 'f(x) = \\left(x + \\dfrac{9}{2}\\right)^{2} + \\dfrac{3}{4}',
+        a: 1, b: 9, c: 21, x0def: 0.4
     }
 ];
 
 /* ===== 고정 좌표 범위 (모든 함수 공통) ===== */
-var RANGE   = { xMin: -30, xMax: 30, yMin: 0, yMax: 30 };
-var X_TICKS = [-30,-20,-10,0,10,20,30];
+var RANGE   = { xMin: -10, xMax: 10, yMin: 0, yMax: 30 };
+var X_TICKS = [-10,-5,0,5,10];
 var Y_TICKS = [0,10,20,30];
 
 var funcIdx  = 0;
