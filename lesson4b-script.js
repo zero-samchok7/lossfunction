@@ -2,20 +2,20 @@
 
 /* ===== 함수 정의 ===== */
 var FUNCS = [
-    {   /* 꼭짓점 오른쪽 — 오른쪽 영역에 포물선 */
-        latex:    'f(x) = x^2 - 9x + 21',
-        vtxLatex: 'f(x) = \\left(x - \\dfrac{9}{2}\\right)^{2} + \\dfrac{3}{4}',
-        a: 1, b: -9, c: 21, x0def: -0.5
+    {   /* 넓은 포물선 (a=0.2) — 전체 범위에 펼쳐짐 */
+        latex:    'f(x) = 0.2x^2 - 0.6x + 2.25',
+        vtxLatex: 'f(x) = \\dfrac{1}{5}\\left(x - \\dfrac{3}{2}\\right)^{2} + \\dfrac{9}{5}',
+        a: 0.2, b: -0.6, c: 2.25, x0def: -8
     },
-    {   /* 꼭짓점 중앙 — 중앙 영역에 포물선, 계수 2배라 빠른 수렴 */
-        latex:    'f(x) = 2x^2 + x + 2',
-        vtxLatex: 'f(x) = 2\\left(x + \\dfrac{1}{4}\\right)^{2} + \\dfrac{15}{8}',
-        a: 2, b: 1, c: 2, x0def: 3.4
+    {   /* 중간 포물선 (a=0.5) — 왼쪽 영역 */
+        latex:    'f(x) = 0.5x^2 + 3.5x + 8',
+        vtxLatex: 'f(x) = \\dfrac{1}{2}\\left(x + \\dfrac{7}{2}\\right)^{2} + \\dfrac{15}{8}',
+        a: 0.5, b: 3.5, c: 8, x0def: 3.5
     },
-    {   /* 꼭짓점 왼쪽 — 왼쪽 영역에 포물선 */
-        latex:    'f(x) = x^2 + 9x + 21',
-        vtxLatex: 'f(x) = \\left(x + \\dfrac{9}{2}\\right)^{2} + \\dfrac{3}{4}',
-        a: 1, b: 9, c: 21, x0def: 0.4
+    {   /* 좁은 포물선 (a=1.5) — 오른쪽 좁은 영역 */
+        latex:    'f(x) = 1.5x^2 - 7x + 9',
+        vtxLatex: 'f(x) = \\dfrac{3}{2}\\left(x - \\dfrac{7}{3}\\right)^{2} + \\dfrac{5}{6}',
+        a: 1.5, b: -7, c: 9, x0def: -1.5
     }
 ];
 
