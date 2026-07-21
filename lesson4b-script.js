@@ -1,411 +1,477 @@
-/* ===== 데이터 모델 ===== */
-var tableData = [];
-var rowCount = 10;
-var dataPts = [];
+'use strict';
+
+/* ===== 함수 정의 ===== */
+var FUNCS = [
+    {
+        latex:    'f(x) = 2x^2 - 9x + 11',
+        vtxLatex: 'f(x) = 2\\left(x - \\dfrac{9}{4}\\right)^{2} + \\dfrac{7}{8}',
+        a: 2, b: -9, c: 11, x0def: 4.5
+    },
+    {
+        latex:    'f(x) = 3x^2 - 7x + 6',
+        vtxLatex: 'f(x) = 3\\left(x - \\dfrac{7}{6}\\right)^{2} + \\dfrac{23}{12}',
+        a: 3, b: -7, c: 6, x0def: 3.5
+    },
+    {
+        latex:    'f(x) = x^2 + 5x + 9',
+        vtxLatex: 'f(x) = \\left(x + \\dfrac{5}{2}\\right)^{2} + \\dfrac{11}{4}',
+        a: 1, b: 5, c: 9, x0def: 1.5
+    }
+];
+
+/* ===== 고정 좌표 범위 (모든 함수 공통) ===== */
+var RANGE   = { xMin: -30, xMax: 30, yMin: 0, yMax: 30 };
+var X_TICKS = [-30,-20,-10,0,10,20,30];
+var Y_TICKS = [0,10,20,30];
+
+var funcIdx  = 0;
+var showVtx  = false;
+var clickX   = null;   /* 클릭한 x 좌표 (null = 없음) */
 
 /* ===== 경사하강법 상태 ===== */
-var gdA0 = 0, gdAlpha = 0.10;
-var curA = 0;          /* 현재 a 위치 */
-var stepCount = 0;
-var history = [];      /* [{a, mse, grad}] */
-var gdStarted = false; /* 한 단계 이상 실행했는지 */
+var gdHistory  = [];   /* [{step, x, fx, grad}] */
+var gdCurStep  = 0;    /* histiry에서 현재 표시 중인 인덱스 */
+var playing    = false;
+var playTimer  = null;
 
-/* ===== MSE & 기울기 계산 (y=ax) ===== */
-function mse(a) {
-    if (dataPts.length === 0) return 0;
-    var s = 0;
-    dataPts.forEach(function(p) { s += (p.y - a * p.x) * (p.y - a * p.x); });
-    return s / dataPts.length;
+/* ===== 수학 함수 ===== */
+function f(x)  { var fn = FUNCS[funcIdx]; return fn.a*x*x + fn.b*x + fn.c; }
+function df(x) { var fn = FUNCS[funcIdx]; return 2*fn.a*x + fn.b; }
+
+function computeHistory(x0, alpha, n) {
+    var hist = [];
+    var x = x0;
+    for (var i = 0; i <= n; i++) {
+        var grad = df(x);
+        hist.push({ step: i, x: x, fx: f(x), grad: grad });
+        if (Math.abs(grad) < 0.0001) break;           /* 종료조건 */
+        x = x - alpha * grad;
+        if (!isFinite(x) || Math.abs(x) > 1e6) break; /* 발산 방지 */
+    }
+    return hist;
 }
 
-/* dMSE/da = (2/n) Σ(-xᵢ)(yᵢ - axᵢ) = (2/n)(a·Σxᵢ² - Σxᵢyᵢ) */
-function gradient(a) {
-    if (dataPts.length === 0) return 0;
-    var sx2 = 0, sxy = 0;
-    dataPts.forEach(function(p) { sx2 += p.x * p.x; sxy += p.x * p.y; });
-    return 2 * (a * sx2 - sxy) / dataPts.length;
+/* ===== 캔버스 ===== */
+var graphWrap = document.getElementById('graphWrap');
+var graphCvs  = document.getElementById('graphCvs');
+var gCtx      = graphCvs.getContext('2d');
+var PAD       = { top: 32, right: 32, bottom: 52, left: 58 };
+var _range    = null;
+
+function computeRange() { return RANGE; }
+
+/* x:y 비율 동일한 좌표 변환 */
+function getPlot(r) {
+    var cw = graphCvs.width  - PAD.left - PAD.right;
+    var ch = graphCvs.height - PAD.top  - PAD.bottom;
+    var ppu = Math.min(cw / (r.xMax - r.xMin), ch / (r.yMax - r.yMin));
+    var dw  = ppu * (r.xMax - r.xMin);
+    var dh  = ppu * (r.yMax - r.yMin);
+    return { x0: PAD.left + (cw - dw) / 2, y0: PAD.top + (ch - dh) / 2, w: dw, h: dh, ppu: ppu };
 }
 
-function optimalA() {
-    var sx2 = 0, sxy = 0;
-    dataPts.forEach(function(p) { sx2 += p.x * p.x; sxy += p.x * p.y; });
-    return sx2 === 0 ? 0 : sxy / sx2;
+function tp(x, y, r) {
+    var pl = getPlot(r);
+    return { px: pl.x0 + (x - r.xMin) * pl.ppu, py: pl.y0 + (r.yMax - y) * pl.ppu };
 }
 
-/* ===== niceTicks ===== */
-function niceTicks(min, max, count) {
-    var range = max - min, rawStep = range / count;
-    var mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
-    var norm = rawStep / mag;
-    var step = norm < 1.5 ? mag : norm < 3.5 ? 2 * mag : norm < 7.5 ? 5 * mag : 10 * mag;
-    var start = Math.ceil(min / step) * step, ticks = [];
-    for (var v = start; v <= max + 1e-9; v += step) ticks.push(Math.round(v * 1e9) / 1e9);
-    return ticks;
+function pxToX(px, r) {
+    var pl = getPlot(r);
+    return r.xMin + (px - pl.x0) / pl.ppu;
 }
 
-/* ===== 초기화 & 한 단계 ===== */
-function gdReset() {
-    gdA0 = parseFloat(document.getElementById('a0Input').value) || 0;
-    gdAlpha = +document.getElementById('alphaSlider').value;
-    curA = gdA0;
-    stepCount = 0;
-    history = [];
-    gdStarted = false;
-    var hasPts = dataPts.length >= 2;
-    document.getElementById('btnStep').disabled = !hasPts;
-    document.getElementById('btnStepReset').disabled = !hasPts;
-    updateMidPanel();
-    drawParabola();
-    drawLeft();
+function drawGrid(r) {
+    var pl = getPlot(r);
+
+    /* 격자선 */
+    gCtx.strokeStyle = '#e2e8f0'; gCtx.lineWidth = 1;
+    X_TICKS.forEach(function(v) {
+        var px = pl.x0 + (v - r.xMin) * pl.ppu;
+        gCtx.beginPath(); gCtx.moveTo(px, pl.y0); gCtx.lineTo(px, pl.y0 + pl.h); gCtx.stroke();
+        gCtx.fillStyle = '#4a5568'; gCtx.font = 'bold 12px sans-serif'; gCtx.textAlign = 'center';
+        gCtx.fillText(v, px, pl.y0 + pl.h + 17);
+    });
+    Y_TICKS.forEach(function(v) {
+        var py = pl.y0 + (r.yMax - v) * pl.ppu;
+        gCtx.beginPath(); gCtx.moveTo(pl.x0, py); gCtx.lineTo(pl.x0 + pl.w, py); gCtx.stroke();
+        gCtx.fillStyle = '#4a5568'; gCtx.font = 'bold 12px sans-serif'; gCtx.textAlign = 'right';
+        gCtx.fillText(v, pl.x0 - 6, py + 4);
+    });
+
+    /* x=0, y=0 축선 (강조) */
+    var px0 = pl.x0 + (0 - r.xMin) * pl.ppu;
+    var py0 = pl.y0 + r.yMax * pl.ppu;
+    gCtx.strokeStyle = '#a0aec0'; gCtx.lineWidth = 1.5;
+    gCtx.beginPath(); gCtx.moveTo(px0, pl.y0); gCtx.lineTo(px0, pl.y0 + pl.h); gCtx.stroke();
+    gCtx.beginPath(); gCtx.moveTo(pl.x0, py0); gCtx.lineTo(pl.x0 + pl.w, py0); gCtx.stroke();
+
+    /* 축 레이블 */
+    gCtx.fillStyle = '#a0aec0'; gCtx.font = '13px sans-serif';
+    gCtx.textAlign = 'center';
+    gCtx.fillText('x', pl.x0 + pl.w + 16, py0);
+    gCtx.save(); gCtx.translate(14, pl.y0 + pl.h / 2); gCtx.rotate(-Math.PI / 2);
+    gCtx.fillText('f (x)', 0, 0); gCtx.restore();
 }
 
-function gdStep() {
-    if (dataPts.length < 2) return;
-    var g = gradient(curA);
-    var m = mse(curA);
-    history.push({ step: stepCount, a: curA, mse: m, grad: g });
-    var newA = curA - gdAlpha * g;
-    curA = newA;
-    stepCount++;
-    gdStarted = true;
-    updateMidPanel();
-    drawParabola();
-    drawLeft();
+function drawTangent(x, r) {
+    var fn  = FUNCS[funcIdx];
+    var slope = df(x);
+    var span  = (fn.xMax - fn.xMin) * 0.32;
+    var x1 = x - span, x2 = x + span;
+    var p1 = tp(x1, f(x) + slope * (x1 - x), r);
+    var p2 = tp(x2, f(x) + slope * (x2 - x), r);
+    gCtx.beginPath(); gCtx.setLineDash([5, 4]);
+    gCtx.strokeStyle = '#e53e3e'; gCtx.lineWidth = 1.5;
+    gCtx.moveTo(p1.px, p1.py); gCtx.lineTo(p2.px, p2.py); gCtx.stroke();
+    gCtx.setLineDash([]);
 }
 
-/* ===== 중간 패널 업데이트 ===== */
-function updateMidPanel() {
-    if (!gdStarted || history.length === 0) {
-        document.getElementById('statStep').textContent = '—';
-        document.getElementById('statA').textContent = '—';
-        document.getElementById('statMse').textContent = '—';
-        document.getElementById('statGrad').textContent = '—';
-        document.getElementById('stepFormula').textContent = '—';
-        document.getElementById('convergeBox').style.display = 'none';
-        document.getElementById('tangentHint').style.display = dataPts.length >= 2 ? '' : 'none';
-    } else {
-        var last = history[history.length - 1];
-        document.getElementById('statStep').textContent = last.step;
-        document.getElementById('statA').textContent = last.a.toFixed(4);
-        document.getElementById('statMse').textContent = last.mse.toFixed(4);
-        document.getElementById('statGrad').textContent = last.grad.toFixed(4);
-        var fmtA = last.a.toFixed(3), fmtAlpha = gdAlpha.toFixed(2), fmtG = last.grad.toFixed(3);
-        var fmtNew = curA.toFixed(3);
-        document.getElementById('stepFormula').textContent =
-            fmtNew + ' = ' + fmtA + ' − ' + fmtAlpha + ' × ' + fmtG;
-        var converged = Math.abs(last.grad) < 0.001;
-        document.getElementById('convergeBox').style.display = converged ? '' : 'none';
-        document.getElementById('tangentHint').style.display = 'none';
+function drawArrow(x1, y1, x2, y2) {
+    var angle = Math.atan2(y2 - y1, x2 - x1);
+    gCtx.beginPath(); gCtx.moveTo(x1, y1); gCtx.lineTo(x2, y2);
+    gCtx.strokeStyle = '#e53e3e'; gCtx.lineWidth = 1.5; gCtx.stroke();
+    gCtx.beginPath();
+    gCtx.moveTo(x2, y2);
+    gCtx.lineTo(x2 - 9 * Math.cos(angle - 0.4), y2 - 9 * Math.sin(angle - 0.4));
+    gCtx.lineTo(x2 - 9 * Math.cos(angle + 0.4), y2 - 9 * Math.sin(angle + 0.4));
+    gCtx.closePath(); gCtx.fillStyle = '#e53e3e'; gCtx.fill();
+}
+
+function drawGraph() {
+    var w = graphCvs.width, h = graphCvs.height;
+    gCtx.clearRect(0, 0, w, h);
+    gCtx.fillStyle = '#fafbfc'; gCtx.fillRect(0, 0, w, h);
+
+    var r = computeRange();
+    _range = r;
+
+    drawGrid(r);
+
+    /* 플롯 영역 클리핑 */
+    var pl = getPlot(r);
+    gCtx.save();
+    gCtx.beginPath(); gCtx.rect(pl.x0, pl.y0, pl.w, pl.h); gCtx.clip();
+
+    /* 포물선 */
+    var fn = FUNCS[funcIdx];
+    gCtx.beginPath();
+    for (var i = 0; i <= 600; i++) {
+        var x = r.xMin + (r.xMax - r.xMin) * i / 600;
+        var p = tp(x, f(x), r);
+        if (i === 0) gCtx.moveTo(p.px, p.py); else gCtx.lineTo(p.px, p.py);
+    }
+    gCtx.strokeStyle = '#6c5ce7'; gCtx.lineWidth = 2.5; gCtx.stroke();
+
+    /* 꼭짓점 ★ */
+    var vx = -fn.b / (2 * fn.a);
+    var vy = f(vx);
+    if (vx >= r.xMin && vx <= r.xMax && vy >= r.yMin && vy <= r.yMax) {
+        var vp = tp(vx, vy, r);
+        gCtx.font = '15px sans-serif'; gCtx.fillStyle = '#f6ad55'; gCtx.textAlign = 'center';
+        gCtx.fillText('★', vp.px, vp.py - 3);
     }
 
-    /* 단계별 기록 테이블 */
+    /* 클릭 점 (GD 없을 때만) */
+    if (clickX !== null && gdHistory.length === 0) {
+        drawTangent(clickX, r);
+        var cp = tp(clickX, f(clickX), r);
+        gCtx.beginPath(); gCtx.arc(cp.px, cp.py, 5.5, 0, 2 * Math.PI);
+        gCtx.fillStyle = '#e53e3e'; gCtx.fill();
+        gCtx.strokeStyle = '#fff'; gCtx.lineWidth = 1.5; gCtx.stroke();
+
+        var slopeVal = df(clickX);
+        var slopeText = '접선의 기울기 = ' + (slopeVal >= 0 ? '+' : '') + slopeVal.toFixed(3);
+        gCtx.fillStyle = '#e53e3e'; gCtx.font = 'bold 12px sans-serif';
+        var lx = Math.min(cp.px + 10, w - PAD.right - gCtx.measureText(slopeText).width - 4);
+        var ly = Math.max(cp.py - 10, PAD.top + 14);
+        gCtx.textAlign = 'left'; gCtx.fillText(slopeText, lx, ly);
+    }
+
+    /* GD 경로 점들 */
+    var displayCount = Math.min(gdCurStep + 1, gdHistory.length);
+    for (var j = 0; j < displayCount; j++) {
+        var hj = gdHistory[j];
+        var isCur = (j === displayCount - 1);
+        var pj = tp(hj.x, hj.fx, r);
+
+        /* x축까지 수직 점선 */
+        var yBase = Math.max(r.yMin, 0);
+        var pBase = tp(hj.x, yBase, r);
+        gCtx.beginPath(); gCtx.setLineDash([3, 3]);
+        gCtx.strokeStyle = isCur ? 'rgba(229,62,62,0.45)' : 'rgba(144,205,244,0.55)';
+        gCtx.lineWidth = 1;
+        gCtx.moveTo(pj.px, pj.py); gCtx.lineTo(pj.px, pBase.py); gCtx.stroke();
+        gCtx.setLineDash([]);
+
+        /* 이전→현재 화살표 */
+        if (j > 0 && isCur) {
+            var prev = gdHistory[j - 1];
+            var pp   = tp(prev.x, prev.fx, r);
+            drawArrow(pp.px, pp.py, pj.px, pj.py);
+        }
+
+        /* 점 */
+        gCtx.beginPath(); gCtx.arc(pj.px, pj.py, isCur ? 6 : 3.5, 0, 2 * Math.PI);
+        gCtx.fillStyle = isCur ? '#e53e3e' : '#90cdf4'; gCtx.fill();
+        if (isCur) { gCtx.strokeStyle = '#fff'; gCtx.lineWidth = 1.5; gCtx.stroke(); }
+    }
+
+    /* 현재 GD 점 접선 */
+    if (gdHistory.length > 0 && gdCurStep < gdHistory.length) {
+        drawTangent(gdHistory[gdCurStep].x, r);
+    }
+
+    gCtx.restore(); /* 클리핑 해제 */
+}
+
+/* ===== 리사이즈 ===== */
+function resize() {
+    graphCvs.width  = graphWrap.clientWidth;
+    graphCvs.height = graphWrap.clientHeight;
+    drawGraph();
+}
+window.addEventListener('resize', resize);
+if (window.ResizeObserver) new ResizeObserver(resize).observe(graphWrap);
+
+/* ===== 캔버스 클릭 ===== */
+graphCvs.addEventListener('click', function(e) {
+    if (gdHistory.length > 0) return; /* GD 중에는 무시 */
+    var rect = graphCvs.getBoundingClientRect();
+    var px   = (e.clientX - rect.left) * graphCvs.width / rect.width;
+    if (!_range) return;
+    var x  = pxToX(px, _range);
+    x = Math.max(_range.xMin + 0.01, Math.min(_range.xMax - 0.01, x));
+    clickX = x;
+    document.getElementById('x0Input').value = x.toFixed(3);
+    showPointInfo(x);
+    drawGraph();
+});
+
+function showPointInfo(x) {
+    document.getElementById('piHint').style.display = 'none';
+    document.getElementById('piRows').style.display = '';
+    var grad = df(x);
+    document.getElementById('piX').textContent   = x.toFixed(3);
+    document.getElementById('piFx').textContent  = f(x).toFixed(3);
+    var gradEl = document.getElementById('piGrad');
+    gradEl.textContent = (grad >= 0 ? '+' : '') + grad.toFixed(3);
+    gradEl.className = 'pi-val ' + (grad > 0 ? 'pi-grad-pos' : grad < 0 ? 'pi-grad-neg' : '');
+}
+
+/* ===== 함수 전환 ===== */
+document.querySelectorAll('.func-btn[data-idx]').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        funcIdx = +this.dataset.idx;
+        showVtx = false;
+        gdHistory = []; gdCurStep = 0;
+        document.querySelectorAll('.func-btn[data-idx]').forEach(function(b) { b.classList.remove('active'); });
+        this.classList.add('active');
+        var btnVtx = document.getElementById('btnVertex');
+        btnVtx.textContent = '표준형'; btnVtx.classList.remove('on');
+        var x0 = FUNCS[funcIdx].x0def;
+        document.getElementById('x0Input').value = x0.toFixed(1);
+        clickX = x0;
+        updateFuncFormula();
+        resetRightPanel();
+        showPointInfo(x0);
+        resize();
+    });
+});
+
+/* ===== 오른쪽 패널 토글 ===== */
+var rightPanel = document.getElementById('rightPanel');
+document.getElementById('btnToggleRight').addEventListener('click', function() {
+    var isHidden = rightPanel.classList.toggle('hidden');
+    this.textContent = isHidden ? '경사하강법 ▶' : '◀ 경사하강법';
+    this.classList.toggle('open', !isHidden);
+});
+
+document.getElementById('btnVertex').addEventListener('click', function() {
+    showVtx = !showVtx;
+    this.textContent = showVtx ? '표준형 ▲' : '표준형';
+    this.classList.toggle('on', showVtx);
+    document.getElementById('formulaVertex').style.visibility = showVtx ? 'visible' : 'hidden';
+});
+
+function updateFuncFormula() {
+    var fn = FUNCS[funcIdx];
+    document.getElementById('formulaStd').innerHTML =
+        katex.renderToString(fn.latex, { throwOnError: false, displayMode: true });
+    document.getElementById('formulaVertex').innerHTML =
+        katex.renderToString(fn.vtxLatex, { throwOnError: false, displayMode: true });
+    document.getElementById('formulaVertex').style.visibility = 'hidden';
+}
+
+/* ===== 컨트롤 이벤트 ===== */
+var alphaSlider  = document.getElementById('alphaSlider');
+var alphaDisplay = document.getElementById('alphaDisplay');
+var nSlider      = document.getElementById('nSlider');
+var nDisplay     = document.getElementById('nDisplay');
+var x0Input      = document.getElementById('x0Input');
+var stepSlider   = document.getElementById('stepSlider');
+var stepDisplay  = document.getElementById('stepDisplay');
+var speedSlider  = document.getElementById('speedSlider');
+
+alphaSlider.addEventListener('input', function() {
+    alphaDisplay.textContent = (+this.value).toFixed(3);
+    recompute();
+});
+nSlider.addEventListener('input', function() {
+    nDisplay.textContent = this.value;
+    recompute();
+});
+x0Input.addEventListener('change', function() {
+    var x = parseFloat(this.value);
+    if (!isNaN(x)) { clickX = x; showPointInfo(x); recompute(); }
+});
+
+function recompute() {
+    if (gdHistory.length === 0) return; /* 아직 시작 전이면 무시 */
+    stopPlay();
+    var x0    = parseFloat(x0Input.value) || FUNCS[funcIdx].x0def;
+    var alpha = +alphaSlider.value;
+    var n     = +nSlider.value;
+    gdHistory  = computeHistory(x0, alpha, n);
+    gdCurStep  = Math.min(gdCurStep, gdHistory.length - 1);
+    stepSlider.max   = gdHistory.length - 1;
+    stepSlider.value = gdCurStep;
+    stepDisplay.textContent = gdCurStep;
+    updateRightPanel();
+    drawGraph();
+}
+
+function initGD() {
+    var x0    = parseFloat(x0Input.value) || FUNCS[funcIdx].x0def;
+    var alpha = +alphaSlider.value;
+    var n     = +nSlider.value;
+    gdHistory  = computeHistory(x0, alpha, n);
+    gdCurStep  = 0;
+    stepSlider.max   = gdHistory.length - 1;
+    stepSlider.value = 0;
+    stepDisplay.textContent = 0;
+    clickX = null;
+    resetPointInfo();
+}
+
+document.getElementById('btnPlay').addEventListener('click', function() {
+    if (gdHistory.length === 0) initGD();
+    else if (gdCurStep >= gdHistory.length - 1) { gdCurStep = 0; stepSlider.value = 0; }
+    stopPlay();
+    startPlay();
+    updateRightPanel(); drawGraph();
+});
+
+document.getElementById('btnStep').addEventListener('click', function() {
+    stopPlay();
+    if (gdHistory.length === 0) { initGD(); }
+    else if (gdCurStep < gdHistory.length - 1) {
+        gdCurStep++;
+        stepSlider.value = gdCurStep;
+        stepDisplay.textContent = gdCurStep;
+    }
+    updateRightPanel(); drawGraph();
+});
+
+document.getElementById('btnReset').addEventListener('click', function() {
+    stopPlay();
+    gdHistory = []; gdCurStep = 0;
+    stepSlider.max = 0; stepSlider.value = 0; stepDisplay.textContent = 0;
+    clickX = null;
+    resetRightPanel(); resetPointInfo(); drawGraph();
+});
+
+stepSlider.addEventListener('input', function() {
+    if (gdHistory.length === 0) return;
+    stopPlay();
+    gdCurStep = +this.value;
+    stepDisplay.textContent = gdCurStep;
+    updateRightPanel(); drawGraph();
+});
+
+var SPEEDS = [600, 380, 200, 100, 50];
+
+function startPlay() {
+    if (playing) return;
+    playing = true;
+    (function tick() {
+        if (!playing) return;
+        if (gdCurStep >= gdHistory.length - 1) { playing = false; return; }
+        gdCurStep++;
+        stepSlider.value = gdCurStep;
+        stepDisplay.textContent = gdCurStep;
+        updateRightPanel(); drawGraph();
+        if (gdCurStep < gdHistory.length - 1)
+            playTimer = setTimeout(tick, SPEEDS[(+speedSlider.value) - 1] || 200);
+        else
+            playing = false;
+    })();
+}
+
+function stopPlay() {
+    playing = false;
+    clearTimeout(playTimer); playTimer = null;
+}
+
+/* ===== 오른쪽 패널 업데이트 ===== */
+function updateRightPanel() {
+    if (gdHistory.length === 0 || gdCurStep >= gdHistory.length) { resetRightPanel(); return; }
+    var h = gdHistory[gdCurStep];
+    document.getElementById('statStep').textContent = h.step;
+    document.getElementById('statX').textContent    = h.x.toFixed(4);
+    document.getElementById('statFx').textContent   = h.fx.toFixed(4);
+    document.getElementById('statGrad').textContent = h.grad.toFixed(4);
+
+    if (gdCurStep < gdHistory.length - 1) {
+        var alpha = +alphaSlider.value;
+        var next  = gdHistory[gdCurStep + 1];
+        document.getElementById('formulaVals').textContent =
+            next.x.toFixed(4) + ' = ' + h.x.toFixed(4)
+            + ' − ' + alpha.toFixed(3) + ' × (' + h.grad.toFixed(4) + ')';
+    } else {
+        document.getElementById('formulaVals').textContent = '(마지막 단계)';
+    }
+
+    /* 종료조건 박스: 감춤 */
+    document.getElementById('stopBox').style.display = 'none';
+
+    /* 기록 테이블 */
     var tbody = document.getElementById('histTbody');
     tbody.innerHTML = '';
-    history.forEach(function(h, idx) {
+    gdHistory.slice(0, gdCurStep + 1).forEach(function(entry, i) {
         var tr = document.createElement('tr');
-        if (idx === history.length - 1) tr.className = 'current-row';
-        tr.innerHTML = '<td>' + h.step + '</td>'
-            + '<td>' + h.a.toFixed(3) + '</td>'
-            + '<td>' + h.mse.toFixed(3) + '</td>'
-            + '<td>' + h.grad.toFixed(3) + '</td>';
+        if (i === gdCurStep) tr.className = 'current-row';
+        tr.innerHTML = '<td>' + entry.step + '</td>'
+            + '<td>' + entry.x.toFixed(3) + '</td>'
+            + '<td>' + entry.fx.toFixed(3) + '</td>'
+            + '<td>' + entry.grad.toFixed(3) + '</td>';
         tbody.appendChild(tr);
     });
-    /* 최신 행으로 스크롤 */
-    var hw = tbody.parentElement.parentElement;
+    var hw = document.querySelector('.hist-wrap');
     if (hw) hw.scrollTop = hw.scrollHeight;
 }
 
-/* ===== 우측: MSE 포물선 + 접선 그리기 ===== */
-var pCvs = document.getElementById('parabolaCvs');
-var pCtx = pCvs.getContext('2d');
-var PM = { top: 36, right: 40, bottom: 56, left: 62 };
-
-function resizeParabola() {
-    pCvs.width = pCvs.offsetWidth;
-    pCvs.height = pCvs.offsetHeight;
-    drawParabola();
-}
-
-function drawParabola() {
-    var w = pCvs.width, h = pCvs.height;
-    pCtx.clearRect(0, 0, w, h);
-    pCtx.fillStyle = '#fff'; pCtx.fillRect(0, 0, w, h);
-
-    if (dataPts.length < 2) {
-        document.getElementById('parabolaHint').style.display = '';
-        return;
-    }
-    document.getElementById('parabolaHint').style.display = 'none';
-
-    var aStar = optimalA();
-    var aMax = Math.max(aStar * 2.2, Math.abs(curA) * 1.5, 5);
-    var aMin = Math.min(-aMax * 0.3, curA - (aMax - curA) * 0.3, 0);
-    var mseAtZero = mse(0);
-    var yMax = Math.max(mseAtZero * 1.1, mse(curA) * 1.5, 1);
-    var yMin = 0;
-    var plotW = w - PM.left - PM.right, plotH = h - PM.top - PM.bottom;
-
-    function tp(a, m) {
-        return {
-            px: PM.left + (a - aMin) / (aMax - aMin) * plotW,
-            py: PM.top + (1 - (m - yMin) / (yMax - yMin)) * plotH
-        };
-    }
-
-    /* 격자 */
-    var aTicks = niceTicks(aMin, aMax, 5), mTicks = niceTicks(yMin, yMax, 4);
-    pCtx.strokeStyle = '#e2e8f0'; pCtx.lineWidth = 1;
-    aTicks.forEach(function(v) {
-        var p = tp(v, 0);
-        pCtx.beginPath(); pCtx.moveTo(p.px, PM.top); pCtx.lineTo(p.px, h - PM.bottom); pCtx.stroke();
-        pCtx.fillStyle = '#4a5568'; pCtx.font = 'bold 13px sans-serif'; pCtx.textAlign = 'center';
-        pCtx.fillText(v.toFixed(1), p.px, h - PM.bottom + 16);
+function resetRightPanel() {
+    ['statStep', 'statX', 'statFx', 'statGrad'].forEach(function(id) {
+        document.getElementById(id).textContent = '—';
     });
-    mTicks.forEach(function(v) {
-        var p = tp(0, v);
-        pCtx.beginPath(); pCtx.moveTo(PM.left, p.py); pCtx.lineTo(w - PM.right, p.py); pCtx.stroke();
-        pCtx.fillStyle = '#4a5568'; pCtx.font = 'bold 13px sans-serif'; pCtx.textAlign = 'right';
-        pCtx.fillText(v.toFixed(2), PM.left - 8, p.py + 4);
-    });
-
-    /* 축 레이블 */
-    pCtx.fillStyle = '#718096'; pCtx.font = '14px sans-serif'; pCtx.textAlign = 'center';
-    pCtx.fillText('기울기 a', w / 2, h - 10);
-    pCtx.save(); pCtx.translate(16, h / 2); pCtx.rotate(-Math.PI / 2);
-    pCtx.fillText('MSE(a)', 0, 0); pCtx.restore();
-
-    /* 포물선 */
-    pCtx.beginPath();
-    for (var i = 0; i <= 200; i++) {
-        var a = aMin + (aMax - aMin) * i / 200;
-        var p = tp(a, mse(a));
-        if (i === 0) pCtx.moveTo(p.px, p.py); else pCtx.lineTo(p.px, p.py);
-    }
-    pCtx.strokeStyle = '#6c5ce7'; pCtx.lineWidth = 2.5; pCtx.stroke();
-
-    /* 최솟값 ★ */
-    var starP = tp(aStar, mse(aStar));
-    pCtx.font = '18px sans-serif'; pCtx.fillStyle = '#f6ad55'; pCtx.textAlign = 'center';
-    pCtx.fillText('★', starP.px, starP.py - 4);
-    pCtx.setLineDash([4, 4]); pCtx.strokeStyle = '#f6ad55'; pCtx.lineWidth = 1;
-    pCtx.beginPath(); pCtx.moveTo(starP.px, starP.py); pCtx.lineTo(starP.px, h - PM.bottom); pCtx.stroke();
-    pCtx.setLineDash([]);
-    pCtx.fillStyle = '#fff'; pCtx.fillRect(starP.px - 24, h - PM.bottom + 2, 48, 18);
-    pCtx.fillStyle = '#f6ad55'; pCtx.font = 'bold 12px sans-serif'; pCtx.textAlign = 'center';
-    pCtx.fillText('a*=' + aStar.toFixed(2), starP.px, h - PM.bottom + 15);
-
-    /* 현재 a에서의 점 */
-    var curM = mse(curA);
-    var cp = tp(curA, curM);
-
-    /* 접선 그리기 */
-    var g = gradient(curA);
-    /* 접선: y - curM = g*(a - curA) → 범위 내 클리핑 */
-    var tangentA1 = aMin, tangentA2 = aMax;
-    var tangentM1 = curM + g * (tangentA1 - curA);
-    var tangentM2 = curM + g * (tangentA2 - curA);
-    var tp1 = tp(tangentA1, tangentM1), tp2 = tp(tangentA2, tangentM2);
-    pCtx.beginPath();
-    pCtx.moveTo(tp1.px, tp1.py); pCtx.lineTo(tp2.px, tp2.py);
-    pCtx.strokeStyle = '#e53e3e'; pCtx.lineWidth = 1.5; pCtx.setLineDash([6, 3]); pCtx.stroke();
-    pCtx.setLineDash([]);
-
-    /* 업데이트 방향 화살표 */
-    if (gdStarted && history.length > 0) {
-        var newA = curA; /* curA는 이미 다음 단계로 이동됨 */
-        var last = history[history.length - 1];
-        var prevP = tp(last.a, last.mse);
-        var nextP = tp(newA, mse(newA));
-        /* 화살표 (prevA → curA) */
-        pCtx.beginPath();
-        pCtx.moveTo(prevP.px, prevP.py); pCtx.lineTo(nextP.px, nextP.py);
-        pCtx.strokeStyle = '#e53e3e'; pCtx.lineWidth = 2; pCtx.stroke();
-        /* 화살촉 */
-        var angle = Math.atan2(nextP.py - prevP.py, nextP.px - prevP.px);
-        pCtx.beginPath();
-        pCtx.moveTo(nextP.px, nextP.py);
-        pCtx.lineTo(nextP.px - 10 * Math.cos(angle - 0.4), nextP.py - 10 * Math.sin(angle - 0.4));
-        pCtx.lineTo(nextP.px - 10 * Math.cos(angle + 0.4), nextP.py - 10 * Math.sin(angle + 0.4));
-        pCtx.closePath(); pCtx.fillStyle = '#e53e3e'; pCtx.fill();
-    }
-
-    /* 현재 점 (빨간 원) */
-    pCtx.beginPath(); pCtx.arc(cp.px, cp.py, 7, 0, 2 * Math.PI);
-    pCtx.fillStyle = '#e53e3e'; pCtx.fill();
-    pCtx.strokeStyle = '#fff'; pCtx.lineWidth = 2; pCtx.stroke();
-
-    /* 접선 기울기 레이블 */
-    pCtx.fillStyle = '#e53e3e'; pCtx.font = 'bold 12px sans-serif'; pCtx.textAlign = 'left';
-    var labelText = '기울기=' + g.toFixed(3);
-    var lx = Math.min(cp.px + 10, w - PM.right - pCtx.measureText(labelText).width - 4);
-    var ly = Math.max(cp.py - 10, PM.top + 14);
-    pCtx.fillText(labelText, lx, ly);
+    document.getElementById('formulaVals').textContent = '—';
+    document.getElementById('stopBox').style.display = 'none';
+    document.getElementById('histTbody').innerHTML = '';
 }
 
-/* ===== 포물선 클릭 → a 위치 이동 ===== */
-pCvs.addEventListener('click', function(e) {
-    if (dataPts.length < 2) return;
-    var rect = pCvs.getBoundingClientRect();
-    var cx = e.clientX - rect.left;
-    var w = pCvs.width;
-    var aStar = optimalA();
-    var aMax = Math.max(aStar * 2.2, Math.abs(curA) * 1.5, 5);
-    var aMin = Math.min(-aMax * 0.3, 0);
-    var plotW = w - PM.left - PM.right;
-    var clicked = aMin + (cx - PM.left) / plotW * (aMax - aMin);
-    clicked = Math.max(aMin, Math.min(aMax, clicked));
-    curA = Math.round(clicked * 100) / 100;
-    /* 클릭으로 이동 시 기록에 추가 */
-    gdStarted = false; /* 이동만, 단계 기록은 리셋하지 않음 */
-    drawParabola();
-    drawLeft();
-    /* stepFormula 업데이트 (다음 단계 미리보기) */
-    updateStepPreview();
-});
-
-function updateStepPreview() {
-    if (dataPts.length < 2) return;
-    var g = gradient(curA);
-    var m = mse(curA);
-    document.getElementById('statA').textContent = curA.toFixed(4);
-    document.getElementById('statMse').textContent = m.toFixed(4);
-    document.getElementById('statGrad').textContent = g.toFixed(4);
-    var newA = curA - gdAlpha * g;
-    document.getElementById('stepFormula').textContent =
-        newA.toFixed(3) + ' = ' + curA.toFixed(3) + ' − ' + gdAlpha.toFixed(2) + ' × ' + g.toFixed(3);
+function resetPointInfo() {
+    document.getElementById('piHint').style.display = '';
+    document.getElementById('piRows').style.display = 'none';
 }
-
-/* ===== 좌측 산점도 ===== */
-var lCvs = document.getElementById('leftCvs');
-var lCtx = lCvs.getContext('2d');
-var LPAD = { top: 22, right: 16, bottom: 42, left: 52 };
-
-function resizeLeft() {
-    lCvs.width = lCvs.offsetWidth;
-    lCvs.height = lCvs.offsetHeight;
-    drawLeft();
-}
-
-function drawLeft() {
-    var w = lCvs.width, h = lCvs.height;
-    lCtx.clearRect(0, 0, w, h);
-    lCtx.fillStyle = '#fff'; lCtx.fillRect(0, 0, w, h);
-
-    var plotW = w - LPAD.left - LPAD.right, plotH = h - LPAD.top - LPAD.bottom;
-    function lCX(v) { return LPAD.left + (v / 20) * plotW; }
-    function lCY(v) { return LPAD.top + (1 - v / 20) * plotH; }
-
-    /* 격자 */
-    lCtx.strokeStyle = '#e2e8f0'; lCtx.lineWidth = 1;
-    [0, 5, 10, 15, 20].forEach(function(v) {
-        lCtx.beginPath(); lCtx.moveTo(lCX(v), LPAD.top); lCtx.lineTo(lCX(v), h - LPAD.bottom); lCtx.stroke();
-        lCtx.beginPath(); lCtx.moveTo(LPAD.left, lCY(v)); lCtx.lineTo(w - LPAD.right, lCY(v)); lCtx.stroke();
-        var fs = Math.max(11, w * 0.032);
-        lCtx.fillStyle = '#4a5568'; lCtx.font = 'bold ' + fs + 'px sans-serif';
-        lCtx.textAlign = 'center'; lCtx.fillText(v, lCX(v), h - LPAD.bottom + 14);
-        lCtx.textAlign = 'right';  lCtx.fillText(v, LPAD.left - 4, lCY(v) + 4);
-    });
-
-    /* 추세선 y=curA*x */
-    if (dataPts.length > 0) {
-        var xEnd = curA > 0 ? Math.min(20 / curA, 20) : 20;
-        lCtx.beginPath();
-        lCtx.moveTo(lCX(0), lCY(0));
-        lCtx.lineTo(lCX(xEnd), lCY(Math.min(curA * xEnd, 20)));
-        lCtx.strokeStyle = '#e53e3e'; lCtx.lineWidth = 2; lCtx.stroke();
-    }
-
-    /* 데이터 점 */
-    dataPts.forEach(function(p) {
-        lCtx.beginPath(); lCtx.arc(lCX(p.x), lCY(p.y), 4, 0, 2 * Math.PI);
-        lCtx.fillStyle = '#2d3748'; lCtx.fill();
-    });
-}
-
-/* ===== 데이터 테이블 ===== */
-function buildTable() {
-    var tbody = document.getElementById('tbody');
-    tbody.innerHTML = '';
-    tableData.forEach(function(row, i) {
-        var tr = document.createElement('tr');
-        tr.innerHTML = '<td class="rn">' + (i + 1) + '</td>'
-            + '<td class="ci"><input type="number" step="0.1" data-r="' + i + '" data-c="x" value="' + row.x + '"></td>'
-            + '<td class="ci"><input type="number" step="0.1" data-r="' + i + '" data-c="y" value="' + row.y + '"></td>';
-        if (row.x !== '') tr.querySelector('[data-c=x]').classList.add('has-val');
-        if (row.y !== '') tr.querySelector('[data-c=y]').classList.add('has-val');
-        tbody.appendChild(tr);
-    });
-    tbody.addEventListener('change', function(e) {
-        var inp = e.target;
-        if (!inp.dataset.r) return;
-        var r = +inp.dataset.r, col = inp.dataset.c;
-        tableData[r][col] = inp.value;
-        inp.classList.toggle('has-val', inp.value !== '');
-        onDataChange();
-    });
-}
-
-function onDataChange() {
-    dataPts = tableData
-        .filter(function(r) { return r.x !== '' && r.y !== '' && !isNaN(+r.x) && !isNaN(+r.y); })
-        .map(function(r) { return { x: +r.x, y: +r.y }; });
-    gdReset();
-}
-
-/* ===== 샘플 생성 & 초기화 ===== */
-function generateSample() {
-    var slope = 0.5 + Math.random() * 2.0;
-    var result = [];
-    for (var i = 0; i < 8; i++) {
-        var x = Math.round((2 + Math.random() * 14) * 10) / 10;
-        var noise = (Math.random() - 0.5) * slope * x * 0.5;
-        var y = Math.round(Math.min(20, Math.max(0.1, slope * x + noise)) * 10) / 10;
-        result.push({ x: x, y: y });
-    }
-    return result;
-}
-
-function loadSampleData() {
-    var samples = generateSample();
-    tableData = Array.from({ length: 10 }, function() { return { x: '', y: '' }; });
-    rowCount = 10;
-    buildTable();
-    samples.forEach(function(pt, i) {
-        tableData[i] = { x: String(pt.x), y: String(pt.y) };
-        var xEl = document.querySelector('input[data-r="' + i + '"][data-c="x"]');
-        var yEl = document.querySelector('input[data-r="' + i + '"][data-c="y"]');
-        if (xEl) { xEl.value = pt.x; xEl.classList.add('has-val'); }
-        if (yEl) { yEl.value = pt.y; yEl.classList.add('has-val'); }
-    });
-    onDataChange();
-}
-
-function resetData() {
-    tableData = Array.from({ length: 10 }, function() { return { x: '', y: '' }; });
-    rowCount = 10;
-    buildTable();
-    onDataChange();
-}
-
-/* ===== 이벤트 연결 ===== */
-document.getElementById('a0Input').addEventListener('input', function() {
-    var v = parseFloat(this.value);
-    if (!isNaN(v)) { gdA0 = v; gdReset(); }
-});
-document.getElementById('alphaSlider').addEventListener('input', function() {
-    gdAlpha = +this.value;
-    document.getElementById('alphaDisplay').textContent = gdAlpha.toFixed(2);
-    gdReset();
-});
-document.getElementById('btnStep').addEventListener('click', gdStep);
-document.getElementById('btnStepReset').addEventListener('click', gdReset);
-document.getElementById('btnSample').addEventListener('click', loadSampleData);
-document.getElementById('btnReset').addEventListener('click', resetData);
-
-window.addEventListener('resize', function() { resizeLeft(); resizeParabola(); });
 
 /* ===== 초기화 ===== */
-tableData = Array.from({ length: 10 }, function() { return { x: '', y: '' }; });
-buildTable();
-loadSampleData();
-setTimeout(function() { resizeLeft(); resizeParabola(); }, 10);
+(function init() {
+    updateFuncFormula();
+    alphaDisplay.textContent = (+alphaSlider.value).toFixed(3);
+    nDisplay.textContent     = nSlider.value;
+    /* 초기 클릭 점: 함수①의 기본 x₀ */
+    clickX = FUNCS[0].x0def;
+    document.getElementById('x0Input').value = clickX.toFixed(1);
+    resize(); /* resize → drawGraph 내부에서 showPointInfo 호출 안 되므로 별도 호출 */
+    showPointInfo(clickX);
+}());
