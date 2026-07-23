@@ -44,7 +44,7 @@ function computeHistory(x0, alpha, n) {
     for (var i = 0; i <= n; i++) {
         var grad = df(x);
         hist.push({ step: i, x: x, fx: f(x), grad: grad });
-        if (Math.abs(grad) < 0.0001) break;           /* 종료조건 */
+        if (Math.abs(grad) < 0.001) break;            /* 종료조건 */
         x = x - alpha * grad;
         if (!isFinite(x) || Math.abs(x) > 1e6) break; /* 발산 방지 */
     }
@@ -326,7 +326,7 @@ x0Input.addEventListener('change', function() {
 });
 
 function recompute() {
-    if (gdHistory.length === 0) return; /* 아직 시작 전이면 무시 */
+    if (gdHistory.length === 0) { drawGraph(); return; } /* 시작 전: 그래프만 갱신 */
     stopPlay();
     var x0    = parseFloat(x0Input.value) || FUNCS[funcIdx].x0def;
     var alpha = +alphaSlider.value;
@@ -431,8 +431,8 @@ function updateRightPanel() {
         document.getElementById('formulaVals').textContent = '(마지막 단계)';
     }
 
-    /* 종료조건 박스: 감춤 */
-    document.getElementById('stopBox').style.display = 'none';
+    /* 종료조건 박스 */
+    document.getElementById('stopBox').style.display = Math.abs(h.grad) < 0.001 ? '' : 'none';
 
     /* 기록 테이블 */
     var tbody = document.getElementById('histTbody');
