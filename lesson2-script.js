@@ -285,7 +285,7 @@ document.getElementById('btnReset').addEventListener('click', function() {
 document.getElementById('toggleRight').addEventListener('click', function() {
   rightOpen = !rightOpen;
   document.getElementById('rightPanel').classList.toggle('hidden', !rightOpen);
-  this.textContent = rightOpen ? '◀ 손실함수' : '▶ 손실함수';
+  this.textContent = rightOpen ? '◀ 평균제곱오차' : '▶ 평균제곱오차';
 });
 
 /* ===== 초기화 실행 ===== */
